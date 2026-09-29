@@ -14,12 +14,17 @@ router = Router(name="directory_router")
 @router.message(Command("directory"))
 @router.callback_query(F.data == "nav_directory")
 async def handle_directory_menu(event: Message | CallbackQuery, user_lang: str = "en"):
-    """Displays 12-category community catalog."""
+    """Displays 32-category catalog with 1,400+ verified communities and bots."""
+    from core.directory_data import get_directory_stats
+    stats = get_directory_stats()
     text = (
-        "📂 <b>SENTINEL CURATED COMMUNITY DIRECTORY</b>\n"
+        "📂 <b>SENTINEL GLOBAL DIRECTORY & CATALOG</b>\n"
         "──────────────────────────────\n"
-        "Browse hundreds of top-tier, verified Telegram channels and groups across 12 specialized topics.\n\n"
-        "👇 <i>Select a category to browse:</i>"
+        f"Browse <b>{stats['total_communities']:,}+</b> verified public communities across <b>{stats['total_categories']} specialized categories</b>:\n"
+        f"• 📢 <b>Channels:</b> <code>{stats['channels_count']:,}</code>\n"
+        f"• 👥 <b>Groups & Forums:</b> <code>{stats['groups_count']:,}</code>\n"
+        f"• 🤖 <b>Bots & Tools:</b> <code>{stats['bots_count']:,}</code>\n\n"
+        "👇 <i>Select a category below or use /search &lt;keyword&gt; for live discovery:</i>"
     )
     kb = directory_categories_keyboard(user_lang)
     if isinstance(event, CallbackQuery):

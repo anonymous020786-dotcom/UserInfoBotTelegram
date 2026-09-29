@@ -31,6 +31,7 @@ from core.network_tools import (
     decode_telegram_start_param, get_public_mtproto_proxies
 )
 from core.channel_intelligence import calculate_channel_health_score, get_country_channels
+from core.directory_data import get_directory_stats, get_curated_communities, search_directory
 
 
 async def run_diagnostics():
@@ -135,30 +136,44 @@ async def run_diagnostics():
     print(f"       ✓ Scanned permutations: detected {len(clones)} live clone candidates")
 
     # 15. Bot Roulette (/randombot)
-    print("[15/18] Testing Bot Roulette (/randombot)...")
+    print("[15/19] Testing Bot Roulette (/randombot)...")
     rb = get_random_bot()
-    assert rb["username"].endswith("bot") or rb["username"] in ["wallet", "BotFather"]
+    assert rb["username"].lower().endswith("bot") or rb["username"].lower() in ["wallet", "botfather"]
     print(f"       ✓ Picked Random Bot: {rb['name']} (@{rb['username']}) - {rb['category']}")
 
     # 16. TLS/SSL Certificate Inspection (/ssl)
-    print("[16/18] Testing TLS/SSL Certificate Audit (/ssl)...")
+    print("[16/19] Testing TLS/SSL Certificate Audit (/ssl)...")
     ssl_info = await check_ssl_certificate("telegram.org")
     assert ssl_info["is_valid"] is True
     print(f"       ✓ SSL Issuer: {ssl_info['issuer']} (Expires: {ssl_info['expires_at']})")
 
     # 17. Authoritative RDAP / WHOIS Query (/whois)
-    print("[17/18] Testing Authoritative RDAP / WHOIS Query (/whois)...")
+    print("[17/19] Testing Authoritative RDAP / WHOIS Query (/whois)...")
     whois_info = await query_rdap_whois("telegram.org")
     print(f"       ✓ RDAP Status: {whois_info.get('success')}, Registrar: {whois_info.get('registrar')}")
 
     # 18. Channel Health Quality Score (/health) & Country Communities
-    print("[18/18] Testing Channel Health Quality Score & Regional Directory...")
+    print("[18/19] Testing Channel Health Quality Score & Regional Directory...")
     health = calculate_channel_health_score(preview)
     assert health["score"] >= 70
     us_channels = get_country_channels("us")
     assert len(us_channels["channels"]) >= 3
     print(f"       ✓ Telegram News Health Score: {health['score']}/100 ({health['grade']})")
     print(f"       ✓ Regional US Directory: {us_channels['flag']} {len(us_channels['channels'])} top channels")
+
+    # 19. Curated Directory Catalog (1,400+ Channels, Groups & Bots)
+    print("[19/19] Testing Curated Directory Catalog (1,400+ communities & bots)...")
+    stats = get_directory_stats()
+    assert stats["total_communities"] >= 1400
+    assert stats["total_categories"] == 32
+    assert stats["channels_count"] > 500
+    assert stats["groups_count"] > 300
+    assert stats["bots_count"] > 200
+    search_res = search_directory("crypto")
+    assert len(search_res) > 20
+    print(f"       ✓ Catalog Verified: {stats['total_communities']} communities across {stats['total_categories']} categories!")
+    print(f"         (Channels: {stats['channels_count']} | Groups: {stats['groups_count']} | Bots: {stats['bots_count']})")
+    print(f"       ✓ Query 'crypto' returned {len(search_res)} curated results.")
 
     # Clean temporary diagnostic artifacts
     for f in [qr_file, card_file, pdf_file]:
@@ -168,7 +183,7 @@ async def run_diagnostics():
             pass
 
     print("=" * 70)
-    print("🎉 ALL 18 CORE, BOT FINDER & ADVANCED SUBSYSTEMS PASSED WITH 100% SUCCESS!")
+    print("🎉 ALL 19 CORE, BOT FINDER, DIRECTORY & ADVANCED SUBSYSTEMS PASSED WITH 100% SUCCESS!")
     print("=" * 70)
 
 
