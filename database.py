@@ -78,10 +78,24 @@ async def init_db():
             )
         """)
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS watchlist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                target_identifier TEXT NOT NULL,
+                target_type TEXT,
+                target_title TEXT,
+                last_members_count INTEGER,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, target_identifier)
+            )
+        """)
+
         # Indexes for fast querying
         await db.execute("CREATE INDEX IF NOT EXISTS idx_history_user ON search_history(user_id)")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id)")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_identity_target ON identity_history(target_id)")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist(user_id)")
 
         await db.commit()
 
@@ -292,3 +306,71 @@ async def get_bot_stats() -> Dict[str, Any]:
             "approved_submissions": approved_submissions,
             "pending_submissions": pending_submissions
         }
+
+
+async def add_to_watchlist(user_id: int, target_identifier: str, target_type: str, target_title: str, members_count: Optional[int] = None) -> bool:
+    """Adds a target channel/bot/user to personal watchdog list."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute("""
+                INSERT INTO watchlist (user_id, target_identifier, target_type, target_title, last_members_count)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, target_identifier.lower().lstrip("@"), target_type, target_title, members_count))
+            await db.commit()
+            return True
+        except aiosqlite.IntegrityError:
+            return False
+
+
+async def get_user_watchlist(user_id: int) -> List[Dict[str, Any]]:
+    """Retrieves all monitored targets for a user."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("""
+            SELECT * FROM watchlist WHERE user_id = ? ORDER BY added_at DESC
+        """, (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+
+async def remove_from_watchlist(user_id: int, target_identifier: str) -> bool:
+    """Removes a target from the watchdog list."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("""
+            DELETE FROM watchlist WHERE user_id = ? AND target_identifier = ?
+        """, (user_id, target_identifier.lower().lstrip("@")))
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def is_in_watchlist(user_id: int, target_identifier: str) -> bool:
+    """Checks if a target is already in user's watchlist."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("""
+            SELECT 1 FROM watchlist WHERE user_id = ? AND target_identifier = ?
+        """, (user_id, target_identifier.lower().lstrip("@"))) as cursor:
+            return (await cursor.fetchone()) is not None
+
+
+async def export_user_data_json(user_id: int) -> Dict[str, Any]:
+    """Compiles all user history, favorites, and watchlist into a full JSON dump."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM search_history WHERE user_id = ? ORDER BY id DESC", (user_id,)) as cur:
+            history = [dict(r) for r in await cur.fetchall()]
+        async with db.execute("SELECT * FROM favorites WHERE user_id = ? ORDER BY id DESC", (user_id,)) as cur:
+            favs = [dict(r) for r in await cur.fetchall()]
+        async with db.execute("SELECT * FROM watchlist WHERE user_id = ? ORDER BY id DESC", (user_id,)) as cur:
+            watch = [dict(r) for r in await cur.fetchall()]
+
+        return {
+            "user_id": user_id,
+            "export_timestamp": datetime.utcnow().isoformat(),
+            "total_searches": len(history),
+            "total_favorites": len(favs),
+            "total_watched": len(watch),
+            "history": history,
+            "favorites": favs,
+            "watchlist": watch
+        }
+

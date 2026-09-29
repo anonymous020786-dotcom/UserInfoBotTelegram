@@ -16,6 +16,7 @@ from middlewares.tracking import UserTrackingMiddleware
 # Import Handlers
 from handlers import (
     start,
+    bot_finder,
     user_info,
     forward_inspector,
     channel_finder,
@@ -47,16 +48,28 @@ async def setup_bot_commands(bot: Bot):
     commands = [
         BotCommand(command="start", description="🚀 Launch Main OSINT Dashboard"),
         BotCommand(command="id", description="🆔 View Your Own Profile Card & ID"),
+        BotCommand(command="findbot", description="🤖 Global Telegram Bot Finder"),
+        BotCommand(command="botsquat", description="🛡️ Detect Bot Clones & Impersonators"),
+        BotCommand(command="randombot", description="🎲 Random Bot Discovery Roulette"),
         BotCommand(command="post", description="📊 Channel Post Forensics & Views"),
         BotCommand(command="compare", description="⚖️ Compare 2 Channels Side-by-Side"),
+        BotCommand(command="health", description="📈 Channel Quality & Health Audit Score"),
         BotCommand(command="fragment", description="💎 Fragment NFT & Username Auction"),
         BotCommand(command="domain", description="🌐 Domain & IP Geolocation OSINT"),
         BotCommand(command="phone", description="📱 International Phone & NFT Number"),
+        BotCommand(command="proxy", description="🛡️ MTProto & SOCKS5 Proxy Links"),
+        BotCommand(command="ssl", description="🔒 Audit Domain TLS/SSL Certificate"),
+        BotCommand(command="whois", description="🌐 Query ICANN RDAP Domain Registry"),
+        BotCommand(command="hash", description="🔑 Calculate MD5 / SHA-256 Hashes"),
         BotCommand(command="idmath", description="🔢 64-bit ID Architecture & Forensics"),
         BotCommand(command="token", description="🤖 Bot Token & Webhook Inspector"),
         BotCommand(command="sticker", description="🎨 Sticker Set Forensics"),
+        BotCommand(command="watch", description="👁️ Monitor Entity in Watchdog"),
+        BotCommand(command="watchlist", description="📋 View Monitored Watchdog Targets"),
+        BotCommand(command="exportdata", description="📦 Export Activity Archive (JSON)"),
         BotCommand(command="channel", description="📢 Search & Discover Channels"),
         BotCommand(command="group", description="👥 Search & Discover Groups"),
+        BotCommand(command="country", description="🌐 Regional Communities Index"),
         BotCommand(command="directory", description="📂 Curated 12-Topic Directory"),
         BotCommand(command="tools", description="🛠️ OSINT & Developer Utilities"),
         BotCommand(command="favorites", description="⭐ Access Bookmarked Entities"),
@@ -123,6 +136,7 @@ async def main():
 
     # 6. Register Routers (order matters for matching precedence)
     dp.include_router(start.router)
+    dp.include_router(bot_finder.router)
     dp.include_router(forward_inspector.router)
     dp.include_router(channel_finder.router)
     dp.include_router(group_finder.router)

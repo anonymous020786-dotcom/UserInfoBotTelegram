@@ -519,3 +519,376 @@ async def show_deeplinks_guide(callback: CallbackQuery):
     )
     await callback.message.answer(text, parse_mode="HTML")
     await callback.answer()
+
+
+# -------------------------------------------------------------
+# 10. MTPROTO PROXY GENERATOR (/proxy)
+# -------------------------------------------------------------
+@router.message(Command("proxy", "proxies"))
+async def handle_proxy_command(message: Message):
+    """Provides verified MTProto & SOCKS5 proxy configurations to bypass censorship."""
+    from core.network_tools import get_public_mtproto_proxies
+    proxies = get_public_mtproto_proxies()
+
+    lines = [
+        "🛡️ <b>[TELEGRAM MTPROTO & SOCKS5 PROXY SUITE]</b>",
+        "──────────────────────────────",
+        "Use these verified proxy servers to bypass ISP blocks and network firewalls:\n"
+    ]
+    kb_rows = []
+    for p in proxies:
+        lines.append(f"🌐 <b>{p['name']}</b>")
+        lines.append(f"   • Server: <code>{p['server']}</code> (Port: {p['port']})")
+        lines.append(f"   • Protocol: MTProto Encrypted TLS\n")
+        kb_rows.append([InlineKeyboardButton(text=f"⚡ Connect to {p['name']}", url=p['link'])])
+
+    lines.append("<i>Click a button below to connect with 1 tap directly in Telegram:</i>")
+    await message.reply("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+
+
+# -------------------------------------------------------------
+# 11. SSL CERTIFICATE INSPECTOR (/ssl <domain>)
+# -------------------------------------------------------------
+@router.message(Command("ssl", "cert"))
+async def handle_ssl_command(message: Message):
+    """Audits TLS/SSL certificate of any domain or web service."""
+    from core.network_tools import check_ssl_certificate
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.reply("🔒 Usage: <code>/ssl &lt;domain_name&gt;</code>\n<i>Example:</i> <code>/ssl telegram.org</code>", parse_mode="HTML")
+        return
+
+    domain = parts[1].strip()
+    status_msg = await message.reply(f"🔒 <i>Negotiating TLS handshake with {domain}:443...</i>", parse_mode="HTML")
+    res = await check_ssl_certificate(domain)
+
+    if not res.get("is_valid"):
+        await status_msg.edit_text(f"❌ <b>SSL Handshake Failed:</b> <code>{res.get('error', 'Unknown error')}</code>", parse_mode="HTML")
+        return
+
+    days_str = f"<b>{res['days_remaining']} days remaining</b>" if res.get("days_remaining") is not None else "Unknown"
+    text = [
+        f"🔒 <b>[SSL/TLS CERTIFICATE AUDIT: {res['domain']}]</b>",
+        "──────────────────────────────",
+        f"• <b>Issuer CA:</b> <code>{res['issuer']}</code>",
+        f"• <b>Valid Until:</b> <code>{res['expires_at']}</code>",
+        f"• <b>Validity Window:</b> {days_str}",
+        f"• <b>Alternative Names (SANs):</b> {res['sans_count']} domains covered",
+        f"• <b>Sample SANs:</b> {', '.join(res.get('sans_sample', []))}",
+        "──────────────────────────────",
+        "✓ <b>Certificate Status:</b> <b>ACTIVE & SECURE</b>"
+    ]
+    await status_msg.edit_text("\n".join(text), parse_mode="HTML")
+
+
+# -------------------------------------------------------------
+# 12. WHOIS / RDAP REGISTRATION AUDITOR (/whois <domain>)
+# -------------------------------------------------------------
+@router.message(Command("whois", "rdap"))
+async def handle_whois_command(message: Message):
+    """Queries ICANN RDAP for authoritative domain registration records."""
+    from core.network_tools import query_rdap_whois
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.reply("🌐 Usage: <code>/whois &lt;domain_name&gt;</code>\n<i>Example:</i> <code>/whois telegram.org</code>", parse_mode="HTML")
+        return
+
+    domain = parts[1].strip()
+    status_msg = await message.reply(f"🌐 <i>Querying authoritative RDAP registry for {domain}...</i>", parse_mode="HTML")
+    res = await query_rdap_whois(domain)
+
+    if not res.get("success"):
+        await status_msg.edit_text(f"❌ <b>RDAP Query Failed:</b> <code>{res.get('error', 'Lookup failed')}</code>", parse_mode="HTML")
+        return
+
+    text = [
+        f"🌐 <b>[AUTHORITATIVE RDAP / WHOIS: {res['domain']}]</b>",
+        "──────────────────────────────",
+        f"• <b>Registrar:</b> <b>{res['registrar']}</b>",
+        f"• <b>Registration Date:</b> <code>{res['created']}</code>",
+        f"• <b>Expiration Date:</b> <code>{res['expires']}</code>",
+        f"• <b>Last Updated:</b> <code>{res['last_changed']}</code>",
+        f"• <b>Domain Status:</b> <code>{', '.join(res['status'][:3])}</code>",
+        "──────────────────────────────",
+        "✓ <b>Registry Data Source:</b> ICANN RDAP Framework"
+    ]
+    await status_msg.edit_text("\n".join(text), parse_mode="HTML")
+
+
+# -------------------------------------------------------------
+# 13. CRYPTOGRAPHIC HASH CALCULATOR (/hash <text>)
+# -------------------------------------------------------------
+@router.message(Command("hash", "checksum"))
+async def handle_hash_command(message: Message):
+    """Calculates MD5, SHA-1, and SHA-256 cryptographic hashes."""
+    from core.network_tools import calculate_hashes
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.reply("🔑 Usage: <code>/hash &lt;text_or_payload&gt;</code>", parse_mode="HTML")
+        return
+
+    payload = parts[1].strip()
+    res = calculate_hashes(payload)
+    text = [
+        "🔑 <b>[CRYPTOGRAPHIC HASH & CHECKSUM REPORT]</b>",
+        "──────────────────────────────",
+        f"• <b>Input Payload:</b> <code>{res['text']}</code> ({res['bytes_len']} bytes)",
+        "──────────────────────────────",
+        f"• <b>MD5:</b>\n<code>{res['md5']}</code>",
+        f"• <b>SHA-1:</b>\n<code>{res['sha1']}</code>",
+        f"• <b>SHA-256:</b>\n<code>{res['sha256']}</code>",
+    ]
+    await message.reply("\n".join(text), parse_mode="HTML")
+
+
+# -------------------------------------------------------------
+# 14. TELEGRAM DEEP START PARAM DECODER (/startparam <payload>)
+# -------------------------------------------------------------
+@router.message(Command("startparam", "decode"))
+async def handle_startparam_command(message: Message):
+    """Decodes Telegram deep link start parameters (?start=payload)."""
+    from core.network_tools import decode_telegram_start_param
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.reply("🔍 Usage: <code>/startparam &lt;payload&gt;</code>\n<i>Example:</i> <code>/startparam dGVzdF9wYXlsb2Fk</code>", parse_mode="HTML")
+        return
+
+    raw_param = parts[1].strip()
+    res = decode_telegram_start_param(raw_param)
+    lines = [
+        "🔍 <b>[TELEGRAM START PARAMETER FORENSICS]</b>",
+        "──────────────────────────────",
+        f"• <b>Raw Parameter:</b> <code>{res['raw_parameter']}</code>\n"
+    ]
+    if res["decodings"]:
+        for d in res["decodings"]:
+            lines.append(f"• <b>{d['format']}:</b>\n  <code>{d['value']}</code>\n")
+    else:
+        lines.append("• <i>No standard base64 or hex decoding pattern matched; payload appears plain or custom-encrypted.</i>")
+
+    await message.reply("\n".join(lines), parse_mode="HTML")
+
+
+# -------------------------------------------------------------
+# 15. CHANNEL QUALITY & HEALTH AUDIT SCORE (/health @channel)
+# -------------------------------------------------------------
+@router.message(Command("health", "score"))
+async def handle_channel_health(message: Message, bot: Bot):
+    """Calculates comprehensive 100-point Channel Health & Quality Score."""
+    from core.channel_intelligence import calculate_channel_health_score
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.reply("📈 Usage: <code>/health &lt;@channel_handle&gt;</code>\n<i>Example:</i> <code>/health @telegram</code>", parse_mode="HTML")
+        return
+
+    target = parts[1].strip().lstrip("@")
+    status_msg = await message.reply(f"📈 <i>Auditing health metrics for @{target}...</i>", parse_mode="HTML")
+    entity_data = await resolve_full_entity(target, bot=bot)
+
+    if not entity_data:
+        await status_msg.edit_text("❌ <b>Could not resolve channel.</b> Please verify the username.", parse_mode="HTML")
+        return
+
+    res = calculate_channel_health_score(entity_data)
+    lines = [
+        f"📈 <b>[CHANNEL HEALTH AUDIT: {escape_html(entity_data['title'])}]</b>",
+        "──────────────────────────────",
+        f"• <b>Quality Score:</b> <b>{res['score']} / 100</b>",
+        f"• <b>Rating Tier:</b> 🏆 <b>{res['grade']}</b>",
+        "──────────────────────────────",
+        "📋 <b>SCORE BREAKDOWN:</b>"
+    ]
+    for b in res["breakdown"]:
+        lines.append(f"• {b}")
+
+    lines.extend([
+        "──────────────────────────────",
+        "<i>High quality scores correlate with authentic audiences, clear branding, and verified trust.</i>"
+    ])
+    await status_msg.edit_text("\n".join(lines), parse_mode="HTML")
+
+
+# -------------------------------------------------------------
+# 16. COUNTRY-SPECIFIC COMMUNITIES (/country <code_or_name>)
+# -------------------------------------------------------------
+@router.message(Command("country", "regional"))
+async def handle_country_command(message: Message):
+    """Lists popular national and regional communities."""
+    from core.channel_intelligence import get_country_channels, COUNTRY_COMMUNITIES
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        avail_codes = ", ".join([f"<code>{k.upper()}</code>" for k in COUNTRY_COMMUNITIES.keys()])
+        await message.reply(
+            f"🌐 <b>REGIONAL CHAT EXPLORER:</b>\n"
+            f"Send <code>/country &lt;code&gt;</code>\n"
+            f"Available country codes: {avail_codes}\n"
+            f"<i>Example:</i> <code>/country US</code> or <code>/country IN</code>",
+            parse_mode="HTML"
+        )
+        return
+
+    code = parts[1].strip().lower()
+    cinfo = get_country_channels(code)
+    if not cinfo:
+        await message.reply(f"❌ Country code <code>{code.upper()}</code> not found in regional index. Available: US, UK, IN, DE, ES, FR, BR, AE.", parse_mode="HTML")
+        return
+
+    lines = [
+        f"{cinfo['flag']} <b>[TOP COMMUNITIES: {cinfo['country'].upper()}]</b>",
+        "──────────────────────────────",
+        f"Curated leading national news & public communities:\n"
+    ]
+    kb_rows = []
+    for ch in cinfo["channels"]:
+        lines.append(f"• <b>@{ch}</b>")
+        kb_rows.append([InlineKeyboardButton(text=f"📢 Open @{ch}", url=f"https://t.me/{ch}")])
+
+    await message.reply("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+
+
+# -------------------------------------------------------------
+# 17. WATCHLIST / WATCHDOG MONITOR (/watch, /watchlist, /unwatch)
+# -------------------------------------------------------------
+@router.message(Command("watch"))
+async def handle_watch_command(message: Message, bot: Bot):
+    """Adds a target to personal watchdog monitoring list."""
+    from database import add_to_watchlist
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.reply("👁️ Usage: <code>/watch &lt;@target&gt;</code>\n<i>Monitors target subscriber changes and rebranding.</i>", parse_mode="HTML")
+        return
+
+    target = parts[1].strip().lstrip("@")
+    status_msg = await message.reply(f"👁️ <i>Resolving and registering @{target} to Watchdog...</i>", parse_mode="HTML")
+    entity_data = await resolve_full_entity(target, bot=bot)
+
+    if not entity_data:
+        await status_msg.edit_text("❌ <b>Could not resolve target.</b> Please verify spelling.", parse_mode="HTML")
+        return
+
+    ok = await add_to_watchlist(
+        user_id=message.from_user.id,
+        target_identifier=target,
+        target_type=entity_data.get("type", "entity"),
+        target_title=entity_data.get("title", target),
+        members_count=entity_data.get("members_count")
+    )
+    if ok:
+        await status_msg.edit_text(
+            f"👁️ <b>Watchdog Active:</b> Added <b>{escape_html(entity_data['title'])}</b> (@{target}) to your personal watchlist.\n"
+            f"• <b>Type:</b> <code>{entity_data.get('type', 'entity')}</code>\n"
+            f"• <b>Current Members:</b> <code>{entity_data.get('members_count', 'N/A')}</code>\n"
+            f"• Use <code>/watchlist</code> to view all monitored targets.",
+            parse_mode="HTML"
+        )
+    else:
+        await status_msg.edit_text(f"⚠️ <b>@{target}</b> is already registered in your watchlist.", parse_mode="HTML")
+
+
+@router.message(Command("watchlist", "watchdog"))
+@router.callback_query(F.data == "nav_watchlist")
+async def handle_watchlist_view(event: Message | CallbackQuery):
+    """Displays user's active watchdog monitoring list."""
+    from database import get_user_watchlist
+    user_id = event.from_user.id
+    items = await get_user_watchlist(user_id)
+
+    if not items:
+        text = (
+            "👁️ <b>[YOUR WATCHDOG MONITORING LIST]</b>\n"
+            "──────────────────────────────\n"
+            "<i>You currently have no targets registered in your Watchdog.</i>\n\n"
+            "To monitor a channel, group, or bot, send:\n"
+            "<code>/watch &lt;@username&gt;</code>"
+        )
+        if isinstance(event, CallbackQuery):
+            await event.message.answer(text, parse_mode="HTML")
+            await event.answer()
+        else:
+            await event.answer(text, parse_mode="HTML")
+        return
+
+    lines = [
+        "👁️ <b>[YOUR WATCHDOG MONITORING LIST]</b>",
+        "──────────────────────────────",
+        f"Tracking <b>{len(items)}</b> active entities for updates:\n"
+    ]
+    kb_rows = []
+    for it in items:
+        uname = it["target_identifier"]
+        title = escape_html(it["target_title"] or uname)
+        mcount = f"{it['last_members_count']:,} members" if it.get("last_members_count") else "Monitored"
+        lines.append(f"• <b>{title}</b> (@{uname}) — <code>{mcount}</code>")
+        kb_rows.append([
+            InlineKeyboardButton(text=f"🔍 Check @{uname}", callback_data=f"query_chat_{uname}"),
+            InlineKeyboardButton(text=f"❌ Unwatch", callback_data=f"unwatch_{uname}")
+        ])
+
+    kb_rows.append([InlineKeyboardButton(text="🏠 Home", callback_data="nav_home")])
+
+    if isinstance(event, CallbackQuery):
+        await event.message.edit_text("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+        await event.answer()
+    else:
+        await event.answer("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows), parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("unwatch_"))
+async def handle_unwatch_callback(callback: CallbackQuery):
+    """Removes a target from watchlist via inline button."""
+    from database import remove_from_watchlist
+    target = callback.data.split("unwatch_")[-1]
+    await remove_from_watchlist(callback.from_user.id, target)
+    await callback.answer(f"Removed @{target} from Watchdog.", show_alert=True)
+    await handle_watchlist_view(callback)
+
+
+@router.message(Command("unwatch"))
+async def handle_unwatch_command(message: Message):
+    """Removes a target from watchlist via command."""
+    from database import remove_from_watchlist
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.reply("Usage: <code>/unwatch &lt;@target&gt;</code>", parse_mode="HTML")
+        return
+
+    target = parts[1].strip().lstrip("@")
+    ok = await remove_from_watchlist(message.from_user.id, target)
+    if ok:
+        await message.reply(f"✓ Removed <b>@{target}</b> from your Watchdog.", parse_mode="HTML")
+    else:
+        await message.reply(f"Target <b>@{target}</b> was not found in your Watchdog.", parse_mode="HTML")
+
+
+# -------------------------------------------------------------
+# 18. DATA DUMP & EXPORT (/exportdata)
+# -------------------------------------------------------------
+@router.message(Command("exportdata", "dumpdata"))
+async def handle_export_data(message: Message):
+    """Compiles and exports all user search history, favorites, and watchlist into a downloadable JSON file."""
+    import json
+    from database import export_user_data_json
+    from aiogram.types import BufferedInputFile
+    status_msg = await message.reply("📦 <i>Compiling your complete activity and forensic history archive...</i>", parse_mode="HTML")
+
+    dump = await export_user_data_json(message.from_user.id)
+    json_bytes = json.dumps(dump, indent=2, ensure_ascii=False).encode("utf-8")
+
+    file_doc = BufferedInputFile(
+        file=json_bytes,
+        filename=f"sentinel_archive_user_{message.from_user.id}.json"
+    )
+    await message.reply_document(
+        document=file_doc,
+        caption=(
+            f"📦 <b>[SENTINEL USER ARCHIVE // JSON DUMP]</b>\n"
+            f"──────────────────────────────\n"
+            f"• <b>Total Searches:</b> <code>{dump['total_searches']}</code>\n"
+            f"• <b>Total Bookmarks:</b> <code>{dump['total_favorites']}</code>\n"
+            f"• <b>Watchdog Targets:</b> <code>{dump['total_watched']}</code>\n"
+            f"• <i>Export generated securely in accordance with data sovereignty.</i>"
+        ),
+        parse_mode="HTML"
+    )
+    await status_msg.delete()
+

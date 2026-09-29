@@ -9,15 +9,19 @@ def main_menu_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(text=get_text("btn_user_lookup", lang), callback_data="nav_user_lookup"),
-            InlineKeyboardButton(text=get_text("btn_channel_finder", lang), callback_data="nav_channel_finder")
+            InlineKeyboardButton(text="🤖 Bot Finder Engine", callback_data="nav_bot_finder")
         ],
         [
-            InlineKeyboardButton(text=get_text("btn_group_finder", lang), callback_data="nav_group_finder"),
-            InlineKeyboardButton(text=get_text("btn_forward_inspect", lang), callback_data="nav_forward_inspect")
+            InlineKeyboardButton(text=get_text("btn_channel_finder", lang), callback_data="nav_channel_finder"),
+            InlineKeyboardButton(text=get_text("btn_group_finder", lang), callback_data="nav_group_finder")
+        ],
+        [
+            InlineKeyboardButton(text=get_text("btn_forward_inspect", lang), callback_data="nav_forward_inspect"),
+            InlineKeyboardButton(text=get_text("btn_tools", lang), callback_data="nav_tools")
         ],
         [
             InlineKeyboardButton(text=get_text("btn_directory", lang), callback_data="nav_directory"),
-            InlineKeyboardButton(text=get_text("btn_tools", lang), callback_data="nav_tools")
+            InlineKeyboardButton(text="👁️ Entity Watchdog", callback_data="nav_watchlist")
         ],
         [
             InlineKeyboardButton(text=get_text("btn_favorites", lang), callback_data="nav_favorites"),
