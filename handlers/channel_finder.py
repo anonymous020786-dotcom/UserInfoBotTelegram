@@ -1,6 +1,7 @@
 """
 Sentinel Channel Finder Handler.
-Provides deep channel discovery, search operator filtering (min:, verified:),
+Provides deep channel discovery, search operator filtering (min:, verified:, sort:),
+interactive multi-mode sorting (members, A-Z, verified), size bracket filters,
 interactive pagination (Prev/Next, Page X/Y), and CSV data export.
 """
 from aiogram import Router, F, Bot
@@ -13,6 +14,7 @@ from core.pagination_manager import (
     create_search_session,
     get_search_session,
     build_paginated_view,
+    build_filter_controls_view,
     generate_search_csv
 )
 from ui.formatters import escape_html
@@ -22,18 +24,18 @@ router = Router(name="channel_finder_router")
 
 @router.message(Command("channel", "findchannel", "c"))
 async def handle_channel_search(message: Message, user_theme: str = "cyberpunk", user_lang: str = "en", bot: Bot = None):
-    """Searches for real public Telegram channels matching keywords with pagination."""
+    """Searches for real public Telegram channels matching keywords with pagination & sorting."""
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
         await message.reply(
-            "📢 <b>CHANNEL FINDER USAGE:</b>\n"
+            "📢 <b>CHANNEL FINDER & ADVANCED SEARCH USAGE:</b>\n"
             "──────────────────────────────\n"
             "Send <code>/channel &lt;keyword or name&gt; [filters]</code>\n\n"
             "<b>Search Examples:</b>\n"
             "• <code>/channel artificial intelligence</code>\n"
-            "• <code>/channel python min:10k</code> (At least 10,000 members)\n"
-            "• <code>/channel news verified:true</code> (Only verified channels)\n"
-            "• <code>/channel crypto min:50k</code> (High-volume communities)",
+            "• <code>/channel python min:10k sort:subs</code> (Top Python communities)\n"
+            "• <code>/channel news verified:true</code> (Only verified news outlets)\n"
+            "• <code>/channel crypto sort:alpha</code> (Alphabetical listing)",
             parse_mode="HTML"
         )
         return
@@ -44,34 +46,27 @@ async def handle_channel_search(message: Message, user_theme: str = "cyberpunk",
     status_msg = await message.reply(f"📡 <i>Scanning Telegram global index for channels matching '{clean_query}'...</i>", parse_mode="HTML")
 
     try:
-        raw_results = await search_real_telegram_entities(clean_query, limit=50, bot=bot)
+        raw_results = await search_real_telegram_entities(clean_query, limit=60, bot=bot)
         # Filter channels
         channel_results = [r for r in raw_results if r.get("type") in ["channel", "broadcast"]]
         if not channel_results and raw_results:
             channel_results = raw_results  # fallback
 
-        # Apply search operator filters
-        if filters.get("min_members"):
-            min_m = filters["min_members"]
-            channel_results = [r for r in channel_results if (r.get("members_count") or 0) >= min_m]
-
-        if filters.get("verified_only"):
-            channel_results = [r for r in channel_results if r.get("is_verified")]
-
         if not channel_results:
             await status_msg.edit_text(
-                f"❌ No public channels found matching '<b>{escape_html(clean_query)}</b>' with given filters.\n"
-                "<i>Try broader keywords or remove member thresholds.</i>",
+                f"❌ No public channels found matching '<b>{escape_html(clean_query)}</b>'.\n"
+                "<i>Try broader keywords or search with /explore.</i>",
                 parse_mode="HTML"
             )
             return
 
-        # Store in pagination session
+        # Store in pagination session with initial filters
         sess_id = create_search_session(
             results=channel_results,
             query=clean_query,
             entity_type="channel",
-            per_page=5
+            per_page=5,
+            initial_filters=filters
         )
 
         text, kb = build_paginated_view(sess_id, page=1)
@@ -83,7 +78,7 @@ async def handle_channel_search(message: Message, user_theme: str = "cyberpunk",
 
 
 # ==============================================================================
-# PAGINATION & SEARCH INTERACTIVE CALLBACKS
+# PAGINATION, SORTING & FILTER INTERACTIVE CALLBACKS
 # ==============================================================================
 @router.callback_query(F.data.startswith("page:"))
 async def handle_pagination_page_flip(callback: CallbackQuery):
@@ -108,6 +103,106 @@ async def handle_pagination_page_flip(callback: CallbackQuery):
         await callback.answer()
 
 
+@router.callback_query(F.data.startswith("open_filters:"))
+async def handle_open_filter_controls(callback: CallbackQuery):
+    """Opens the interactive Filter & Sorting Control Center."""
+    parts = callback.data.split(":")
+    sess_id = parts[1]
+    ret_page = int(parts[2]) if len(parts) > 2 else 1
+
+    text, kb = build_filter_controls_view(sess_id, return_page=ret_page)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("set_sort:"))
+async def handle_set_sort_option(callback: CallbackQuery):
+    """Updates sorting order in active search session."""
+    parts = callback.data.split(":")
+    sess_id = parts[1]
+    new_sort = parts[2]
+
+    sess = get_search_session(sess_id)
+    if not sess:
+        await callback.answer("⚠️ Session expired.", show_alert=True)
+        return
+
+    sess["sort_by"] = new_sort
+    text, kb = build_filter_controls_view(sess_id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer("Sorting updated!")
+
+
+@router.callback_query(F.data.startswith("set_size:"))
+async def handle_set_size_tier(callback: CallbackQuery):
+    """Updates audience size bracket filter."""
+    parts = callback.data.split(":")
+    sess_id = parts[1]
+    new_size = parts[2]
+
+    sess = get_search_session(sess_id)
+    if not sess:
+        await callback.answer("⚠️ Session expired.", show_alert=True)
+        return
+
+    sess["size_tier"] = "all" if sess.get("size_tier") == new_size else new_size
+    text, kb = build_filter_controls_view(sess_id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer("Size filter updated!")
+
+
+@router.callback_query(F.data.startswith("set_type:"))
+async def handle_set_type_filter(callback: CallbackQuery):
+    """Updates entity type filter (channel/group/bot)."""
+    parts = callback.data.split(":")
+    sess_id = parts[1]
+    new_type = parts[2]
+
+    sess = get_search_session(sess_id)
+    if not sess:
+        await callback.answer("⚠️ Session expired.", show_alert=True)
+        return
+
+    sess["type_filter"] = "all" if sess.get("type_filter") == new_type else new_type
+    text, kb = build_filter_controls_view(sess_id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer("Type filter updated!")
+
+
+@router.callback_query(F.data.startswith("toggle_ver_btn:"))
+async def handle_toggle_ver_button(callback: CallbackQuery):
+    """Toggles verified-only badge in filter controls."""
+    sess_id = callback.data.split(":")[-1].strip()
+    sess = get_search_session(sess_id)
+    if not sess:
+        await callback.answer("⚠️ Session expired.", show_alert=True)
+        return
+
+    sess["verified_only"] = not sess.get("verified_only", False)
+    text, kb = build_filter_controls_view(sess_id)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer("Verified filter toggled!")
+
+
+@router.callback_query(F.data.startswith("filter_reset:"))
+async def handle_reset_all_filters(callback: CallbackQuery):
+    """Resets all filters and sorting to defaults."""
+    sess_id = callback.data.split(":")[-1].strip()
+    sess = get_search_session(sess_id)
+    if not sess:
+        await callback.answer("⚠️ Session expired.", show_alert=True)
+        return
+
+    sess["sort_by"] = "relevance"
+    sess["size_tier"] = "all"
+    sess["type_filter"] = "all"
+    sess["verified_only"] = False
+
+    text, kb = build_paginated_view(sess_id, page=1)
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+    await callback.answer("All filters reset!")
+
+
 @router.callback_query(F.data.startswith("export_csv_"))
 async def handle_export_search_csv(callback: CallbackQuery):
     """Generates downloadable CSV file of all discovered results in session."""
@@ -130,37 +225,3 @@ async def handle_export_search_csv(callback: CallbackQuery):
         parse_mode="HTML"
     )
     await callback.answer("CSV Exported!")
-
-
-@router.callback_query(F.data.startswith("toggle_ver_"))
-async def handle_toggle_verified_filter(callback: CallbackQuery):
-    """Toggles verified-only badge filter for active search session."""
-    parts = callback.data.split(":")
-    sess_id = parts[0].replace("toggle_ver_", "").strip()
-    sess = get_search_session(sess_id)
-
-    if not sess:
-        await callback.answer("⚠️ Session expired.", show_alert=True)
-        return
-
-    sess["verified_only"] = not sess.get("verified_only", False)
-    text, kb = build_paginated_view(sess_id, page=1)
-    status_label = "Showing Verified Only 🔷" if sess["verified_only"] else "Showing All Results"
-
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    await callback.answer(status_label)
-
-
-@router.callback_query(F.data.startswith("page_reset:"))
-async def handle_reset_filter(callback: CallbackQuery):
-    """Resets filters when zero results are found."""
-    sess_id = callback.data.split(":")[-1].strip()
-    sess = get_search_session(sess_id)
-    if not sess:
-        await callback.answer("⚠️ Session expired.", show_alert=True)
-        return
-
-    sess["verified_only"] = False
-    text, kb = build_paginated_view(sess_id, page=1)
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-    await callback.answer("Filters reset!")

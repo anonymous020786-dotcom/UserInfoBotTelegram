@@ -303,4 +303,67 @@ async def test_similar_community_recommender():
     assert len(recs["recommendations"]) > 0
 
 
+def test_advanced_sorting_and_filtering_engine():
+    """Test multi-mode sorting (subs, A-Z, verified) and multi-tier size filtering."""
+    from core.pagination_manager import apply_filters_and_sorting, build_filter_controls_view, create_search_session
+
+    fake_items = [
+        {"title": "Beta Channel", "username": "beta", "type": "channel", "members_count": 5000, "is_verified": False},
+        {"title": "Alpha Group", "username": "alpha", "type": "group", "members_count": 150000, "is_verified": True},
+        {"title": "Gamma Bot", "username": "gamma_bot", "type": "bot", "members_count": 25000, "is_verified": False},
+        {"title": "Delta Starter", "username": "delta", "type": "channel", "members_count": 400, "is_verified": False}
+    ]
+
+    # Test Sort by Subs Descending
+    sess = {
+        "results": fake_items,
+        "sort_by": "subs_desc",
+        "size_tier": "all",
+        "type_filter": "all",
+        "verified_only": False
+    }
+    sorted_subs = apply_filters_and_sorting(sess)
+    assert sorted_subs[0]["username"] == "alpha"  # 150k
+    assert sorted_subs[-1]["username"] == "delta"  # 400
+
+    # Test Sort by Name Alphabetical (A-Z)
+    sess["sort_by"] = "name_asc"
+    sorted_name = apply_filters_and_sorting(sess)
+    assert sorted_name[0]["title"] == "Alpha Group"
+    assert sorted_name[1]["title"] == "Beta Channel"
+
+    # Test Size Filter Mega (>100k)
+    sess["size_tier"] = "mega"
+    mega_items = apply_filters_and_sorting(sess)
+    assert len(mega_items) == 1
+    assert mega_items[0]["username"] == "alpha"
+
+    # Test Type Filter Group
+    sess["size_tier"] = "all"
+    sess["type_filter"] = "group"
+    group_items = apply_filters_and_sorting(sess)
+    assert len(group_items) == 1
+    assert group_items[0]["type"] == "group"
+
+    # Test Filter Controls UI Rendering
+    s_id = create_search_session(fake_items, "test", entity_type="channel")
+    ctrl_text, ctrl_kb = build_filter_controls_view(s_id)
+    assert "SEARCH CONTROLS" in ctrl_text
+    assert len(ctrl_kb.inline_keyboard) >= 4
+
+
+@pytest.mark.asyncio
+async def test_deep_recon_explorer_engine():
+    """Test multi-vector deep search across channels, groups, bots, and Fragment."""
+    from core.deep_explorer import execute_deep_search, get_explorer_categories
+    stats = get_explorer_categories()
+    assert stats["total_communities"] >= 1400
+
+    res = await execute_deep_search("ai")
+    assert res["total_found"] > 0
+    assert "channels" in res
+    assert "bots" in res
+
+
+
 
