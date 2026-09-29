@@ -68,10 +68,35 @@ async def handle_plain_text_lookup(message: Message, user_theme: str = "cyberpun
     is_num_id = text.lstrip("-").isdigit() and len(text) >= 5
     is_single_word = re.match(r'^[a-zA-Z0-9_]{3,32}$', text)
 
+    # 1. Automatic Channel Post Forensics (e.g. https://t.me/telegram/248)
+    if re.search(r'(?:t\.me\/(?:s\/)?|telegram\.me\/)[a-zA-Z0-9_]{3,32}\/\d+', text):
+        from core.post_analyzer import fetch_real_telegram_post
+        from ui.formatters import format_post_report
+        from core.telegram_discovery import fetch_real_telegram_preview
+        status_msg = await message.reply("📊 <i>Analyzing live channel post metrics...</i>", parse_mode="HTML")
+        pdata = await fetch_real_telegram_post(text)
+        if pdata:
+            cprev = await fetch_real_telegram_preview(pdata["channel_handle"])
+            cmem = cprev.get("members_count") if cprev else None
+            rep = format_post_report(pdata, channel_members=cmem)
+            await status_msg.edit_text(rep, parse_mode="HTML", disable_web_page_preview=True)
+            return
+
+    # 2. Automatic International Phone OSINT (+123456789 or +888...)
+    clean_digits = re.sub(r'[^\d]', '', text)
+    if (text.startswith("+") or text.startswith("00")) and 7 <= len(clean_digits) <= 15:
+        from core.phone_analyzer import analyze_phone_number
+        from ui.formatters import format_phone_report
+        res = analyze_phone_number(text)
+        rep = format_phone_report(res)
+        await message.reply(rep, parse_mode="HTML", disable_web_page_preview=True)
+        return
+
     if not (is_handle or is_num_id or is_single_word):
         return  # Ignore casual chatter
 
     await process_entity_lookup(message, text, user_theme, user_lang, bot)
+
 
 
 async def process_entity_lookup(message: Message, identifier: str, user_theme: str, user_lang: str, bot: Bot):

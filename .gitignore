@@ -1,0 +1,24 @@
+# Environment Secrets
+.env
+
+# Telethon MTProto Sessions
+*.session
+*.session-journal
+data/*.session
+data/*.session-journal
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Runtime exports and avatars
+data/avatars/
+data/exports/*
+!data/exports/dossier_777000_2322.pdf
+!data/exports/idcard_777000_2322.png
+!data/exports/test_qr_508873.png
+
+# Database temporary files
+*.sqlite3-wal
+*.sqlite3-shm

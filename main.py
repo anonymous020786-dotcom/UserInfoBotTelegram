@@ -47,6 +47,14 @@ async def setup_bot_commands(bot: Bot):
     commands = [
         BotCommand(command="start", description="🚀 Launch Main OSINT Dashboard"),
         BotCommand(command="id", description="🆔 View Your Own Profile Card & ID"),
+        BotCommand(command="post", description="📊 Channel Post Forensics & Views"),
+        BotCommand(command="compare", description="⚖️ Compare 2 Channels Side-by-Side"),
+        BotCommand(command="fragment", description="💎 Fragment NFT & Username Auction"),
+        BotCommand(command="domain", description="🌐 Domain & IP Geolocation OSINT"),
+        BotCommand(command="phone", description="📱 International Phone & NFT Number"),
+        BotCommand(command="idmath", description="🔢 64-bit ID Architecture & Forensics"),
+        BotCommand(command="token", description="🤖 Bot Token & Webhook Inspector"),
+        BotCommand(command="sticker", description="🎨 Sticker Set Forensics"),
         BotCommand(command="channel", description="📢 Search & Discover Channels"),
         BotCommand(command="group", description="👥 Search & Discover Groups"),
         BotCommand(command="directory", description="📂 Curated 12-Topic Directory"),
@@ -54,7 +62,6 @@ async def setup_bot_commands(bot: Bot):
         BotCommand(command="favorites", description="⭐ Access Bookmarked Entities"),
         BotCommand(command="history", description="🕒 View Past Lookup History"),
         BotCommand(command="settings", description="⚙️ Language & Visual Themes"),
-        BotCommand(command="features", description="📋 47+ Features Breakdown"),
         BotCommand(command="help", description="📖 User Manual & Guide"),
     ]
     try:

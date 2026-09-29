@@ -209,22 +209,35 @@ def tools_menu_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
     """Dev and OSINT Utilities menu."""
     buttons = [
         [
+            InlineKeyboardButton(text="📊 Post Forensics & Views", callback_data="tool_post_forensics"),
+            InlineKeyboardButton(text="⚖️ Channel Comparator", callback_data="tool_compare")
+        ],
+        [
+            InlineKeyboardButton(text="💎 Fragment NFT Live", callback_data="tool_fragment"),
+            InlineKeyboardButton(text="🌐 Domain & IP OSINT", callback_data="tool_domain_ip")
+        ],
+        [
+            InlineKeyboardButton(text="📱 Phone Number OSINT", callback_data="tool_phone_osint"),
+            InlineKeyboardButton(text="🔢 64-bit ID Forensics", callback_data="tool_idmath")
+        ],
+        [
             InlineKeyboardButton(text="🤖 Bot Token Checker", callback_data="tool_bot_check"),
             InlineKeyboardButton(text="🌐 Data Centers (DC) Map", callback_data="tool_dc_map")
         ],
         [
-            InlineKeyboardButton(text="💎 Fragment NFT Checker", callback_data="tool_fragment"),
-            InlineKeyboardButton(text="🔗 Telegram Deep Links Suite", callback_data="tool_deeplinks")
+            InlineKeyboardButton(text="🏁 Custom QR Generator", callback_data="tool_custom_qr"),
+            InlineKeyboardButton(text="🛡️ Phishing & Scam Auditor", callback_data="tool_scam_audit")
         ],
         [
-            InlineKeyboardButton(text="🏁 Custom QR Code Generator", callback_data="tool_custom_qr"),
-            InlineKeyboardButton(text="🛡️ Phishing & Scam Auditor", callback_data="tool_scam_audit")
+            InlineKeyboardButton(text="🎨 Sticker Pack Forensics", callback_data="tool_sticker"),
+            InlineKeyboardButton(text="🔗 Telegram Deep Links", callback_data="tool_deeplinks")
         ],
         [
             InlineKeyboardButton(text=get_text("btn_home", lang), callback_data="nav_home")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
 
 
 def admin_panel_keyboard() -> InlineKeyboardMarkup:

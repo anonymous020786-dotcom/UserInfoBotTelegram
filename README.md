@@ -88,38 +88,46 @@
 25. **Post Link Synthesizer:** Generates direct links to specific message IDs (`t.me/c/...`).
 26. **Platform Restriction Auditor:** Inspects platform-specific content restrictions (iOS/Android/regional).
 
-### 3. Forensic Exports, Utilities & OSINT (27 – 38)
-27. **Permanent User ID Link Generator:** Generates `tg://user?id=...` permanent protocol links.
-28. **Telegram Deep Links Suite:** Generates `tg://resolve?domain=...`, `t.me/share/url`, and direct app protocols.
-29. **Digital Graphic ID Card (PNG Image):** Renders high-resolution 1080x600 dark cyberpunk identity card with avatar and badges.
-30. **Interactive Styled QR Code Generator:** Generates branded QR code image with rounded modules for any profile.
-31. **OSINT Dossier PDF Generator (ReportLab):** Generates multi-page, formatted PDF intelligence report ready to share.
-32. **Raw JSON Dumper:** Provides complete raw Telegram API Update / Chat JSON structure for developers.
-33. **vCard (.vcf) Contact Exporter:** Generates virtual contact card file for 1-tap phonebook import.
-34. **Bio Word & Link Extractor:** Regex extractor for URLs, domains, email addresses, and @mentions.
-35. **Language & Script Detector:** Identifies Cyrillic, Arabic, Devanagari, East Asian (CJK), and Latin scripts.
-36. **Bot Token Checker & Validator:** Validates bot tokens via Bot API, testing `getMe` and permissions.
-37. **Webhook Status Inspector:** Inspects webhook URL, pending update count, and last error timestamp.
-38. **Phishing & Scam Text Auditor:** Evaluates investment scam triggers, pump & dump signals, and suspicious URLs.
+### 3. Advanced Forensics, Utilities & Network OSINT (27 – 45)
+27. **Channel Post Intelligence & Real Views Forensics (`/post`):** Scrapes real views count, publication UTC timestamp, media type, caption text, and calculates live engagement ratio (Views / Total Subs).
+28. **Side-by-Side Channel Comparator (`/compare`):** Concurrently benchmarks two channels or groups across subscriber counts, difference (Δ), registration epochs, and safety trust scores.
+29. **Live Fragment.com NFT Marketplace Scraper (`/fragment`):** Live blockchain scraper extracting handle status (Taken, Sold, On Auction), valuation in TON, and auction timer.
+30. **Domain & Network IP Geolocation OSINT (`/domain`, `/ip`):** Asynchronous DNS resolution, IP Geolocation (City, Country), ISP organization, ASN network, and phishing heuristic scoring.
+31. **International Phone Number OSINT (`/phone`):** ITU-T E.164 parser, country detection, flag, timezone, and Fragment +888 TON Anonymous Number NFT identification.
+32. **64-bit Telegram ID Mathematics (`/idmath`):** Architectural bit-depth analysis (32-bit legacy vs 64-bit modern), peer classification, and -100 channel offset stripping.
+33. **Bot Token Forensic Decomposition (`/token`):** Offline embedded Bot ID extraction, creation age regression, and Bot API webhook health checks.
+34. **Official Sticker Pack Forensics (`/sticker`):** Extracts sticker pack short name, title, total stickers count, format (Static/Video/Animated), sample emojis, and 1-tap installation link.
+35. **Incoming Sticker Auto-Inspector:** Automatically dissects any sticker sent directly in the chat, identifying file ID, dimensions, and parent pack.
+36. **Automatic Media & Link Classifier:** Auto-routes pasted post URLs, phone numbers, and stickers directly to specialized forensics engines without requiring commands.
+37. **Permanent User ID Link Generator:** Generates `tg://user?id=...` permanent protocol links.
+38. **Telegram Deep Links Suite:** Generates `tg://resolve?domain=...`, `tg://msg_url`, and custom app deep links.
+39. **Digital Graphic ID Card (PNG Image):** Renders high-resolution 1080x600 dark cyberpunk identity card with avatar and badges.
+40. **Interactive Styled QR Code Generator (`/qr`):** Generates branded QR code image with rounded modules for any profile or link.
+41. **OSINT Dossier PDF Generator (ReportLab):** Generates multi-page, formatted PDF intelligence report ready to share.
+42. **Raw JSON Dumper:** Provides complete raw Telegram API Update / Chat JSON structure for developers.
+43. **vCard (.vcf) Contact Exporter:** Generates virtual contact card file for 1-tap phonebook import.
+44. **Bio Word & Link Extractor:** Regex extractor for URLs, domains, email addresses, and @mentions.
+45. **Phishing & Scam Text Auditor (`/audit`):** Evaluates investment scam triggers, pump & dump signals, and suspicious URLs.
 
-### 4. Curated Directory & Community Discovery (39 – 44)
-39. **Curated 12-Topic Directory:** Pre-indexed database across Technology, AI/ML, Coding, CyberSec, Crypto, News, Design, etc.
-40. **Interactive Pagination Controls:** Multi-page inline keyboard navigator (Prev, Next, Page X/Y).
-41. **Community Roulette (Discover Random):** 1-click random discovery of interesting verified communities.
-42. **Community Suggestion / Submission System:** Allows users to submit new channels/groups for inclusion.
-43. **Admin Moderation Approval Queue:** Admins can approve or reject submitted communities with 1 click.
-44. **Trending & Top Channels Leaderboard:** Displays top-rated channels in the catalog.
+### 4. Curated Directory & Community Discovery (46 – 51)
+46. **Curated 12-Topic Directory:** Pre-indexed database across Technology, AI/ML, Coding, CyberSec, Crypto, News, Design, etc.
+47. **Interactive Pagination Controls:** Multi-page inline keyboard navigator (Prev, Next, Page X/Y).
+48. **Community Roulette (Discover Random):** 1-click random discovery of interesting verified communities.
+49. **Community Suggestion / Submission System:** Allows users to submit new channels/groups for inclusion.
+50. **Admin Moderation Approval Queue:** Admins can approve or reject submitted communities with 1 click.
+51. **Trending & Top Channels Leaderboard:** Displays top-rated channels in the catalog.
 
-### 5. Bot Management, UX & Security (45 – 53)
-45. **Favorites & Bookmarks System:** Save channels, groups, or users to personal favorites for quick access.
-46. **Search History Log:** View recent lookups with 1-click re-query buttons and clear history function.
-47. **Multiple Export Formats:** One-click export to PNG ID Card, PDF Dossier, QR Code, VCF, or JSON.
-48. **Customizable Themes:** Switch between **Cyberpunk Neo**, **Minimalist Clean**, and **Detailed OSINT**.
-49. **Multi-Language Support (i18n):** Native support for English, Spanish, Hindi, Russian, and Arabic.
-50. **Anti-Flood & Rate Limiting:** Sliding-window rate limiter prevents spamming and Telegram API 429 bans.
-51. **Admin Broadcast System:** Dispatch formatted announcements to all bot users with delivery metrics.
-52. **Admin Real-time Analytics:** Database statistics, total users, query volume, and memory usage.
-53. **Inline Query Mode:** Search and share entity cards in any chat via `@YourBot <query>`.
+### 5. Bot Management, UX & Security (52 – 60)
+52. **Favorites & Bookmarks System:** Save channels, groups, or users to personal favorites for quick access.
+53. **Search History Log:** View recent lookups with 1-click re-query buttons and clear history function.
+54. **Multiple Export Formats:** One-click export to PNG ID Card, PDF Dossier, QR Code, VCF, or JSON.
+55. **Customizable Themes:** Switch between **Cyberpunk Neo**, **Minimalist Clean**, and **Detailed OSINT**.
+56. **Multi-Language Support (i18n):** Native support for English, Spanish, Hindi, Russian, and Arabic.
+57. **Anti-Flood & Rate Limiting:** Sliding-window rate limiter prevents spamming and Telegram API 429 bans.
+58. **Admin Broadcast System:** Dispatch formatted announcements to all bot users with delivery metrics.
+59. **Admin Real-time Analytics:** Database statistics, total users, query volume, and memory usage.
+60. **Inline Query Mode:** Search and share entity cards in any chat via `@YourBot <query>`.
+
 
 ---
 
