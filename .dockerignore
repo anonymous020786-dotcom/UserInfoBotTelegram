@@ -1,0 +1,48 @@
+# Version control
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Environment secrets & local config
+.env
+.env.*
+!.env.example
+*.session
+*.session-journal
+data/*.session
+data/*.session-journal
+
+# Database runtime files
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+data/*.sqlite3
+data/*.sqlite3-wal
+data/*.sqlite3-shm
+
+# Python cache & build
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Runtime temporary data & media exports
+data/avatars/*
+data/exports/*
+!data/exports/.gitkeep
+
+# IDE and local developer files
+.vscode/
+.idea/
+*.swp
+*.swo
+tests/
+Makefile
+pyproject.toml
+requirements-dev.txt

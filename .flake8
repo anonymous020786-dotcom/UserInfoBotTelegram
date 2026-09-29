@@ -1,0 +1,35 @@
+[flake8]
+max-line-length = 140
+exclude = 
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .venv,
+    venv,
+    data,
+    .pytest_cache
+
+extend-ignore = 
+    # Formatting and whitespace warnings handled by black/autoformatters
+    E203,
+    E225,
+    E251,
+    E302,
+    E303,
+    E305,
+    E501,
+    W291,
+    W292,
+    W293,
+    W391,
+    W503,
+    # F541: f-string without placeholders
+    F541,
+    # F401: imported but unused (common in init and plugin facades)
+    F401
+
+per-file-ignores =
+    __init__.py: F401
+    core/__init__.py: F401
+    handlers/__init__.py: F401

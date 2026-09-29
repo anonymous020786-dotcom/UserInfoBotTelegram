@@ -58,6 +58,7 @@ def analyze_telegram_id(raw_id_input: int | str) -> Dict[str, Any]:
         "underlying_channel_id": underlying_channel_id,
         "bit_length": bit_length,
         "hex_representation": hex_repr,
+        "binary_representation": bin_repr,
         "is_64bit": is_64bit,
         "architecture": epoch_architecture,
         "estimated_registration": age_est["estimated_month"],

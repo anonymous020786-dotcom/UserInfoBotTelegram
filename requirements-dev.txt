@@ -1,0 +1,16 @@
+# Development, Testing & CI/CD Dependencies
+-r requirements.txt
+
+# Testing & Coverage
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+
+# Code Quality & Formatters
+flake8>=7.0.0
+black>=24.0.0
+isort>=5.13.0
+
+# Security Audits & Vulnerability Scanners
+bandit>=1.7.0
+pip-audit>=2.7.0

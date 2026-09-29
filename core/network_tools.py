@@ -13,7 +13,7 @@ async def check_ssl_certificate(domain: str) -> Dict[str, Any]:
     """
     Connects to the target domain on port 443 via TLS and extracts certificate details.
     """
-    clean_domain = re_sub = domain.strip().lower()
+    clean_domain = domain.strip().lower()
     for prefix in ["https://", "http://", "www."]:
         if clean_domain.startswith(prefix):
             clean_domain = clean_domain[len(prefix):]
@@ -125,8 +125,8 @@ def calculate_hashes(text: str) -> Dict[str, str]:
     return {
         "text": text[:60] + ("..." if len(text) > 60 else ""),
         "bytes_len": len(raw_bytes),
-        "md5": hashlib.md5(raw_bytes).hexdigest(),
-        "sha1": hashlib.sha1(raw_bytes).hexdigest(),
+        "md5": hashlib.md5(raw_bytes, usedforsecurity=False).hexdigest(),
+        "sha1": hashlib.sha1(raw_bytes, usedforsecurity=False).hexdigest(),
         "sha256": hashlib.sha256(raw_bytes).hexdigest()
     }
 

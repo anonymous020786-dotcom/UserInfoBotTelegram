@@ -1,9 +1,11 @@
 # 🛰️ Sentinel // Advanced Telegram OSINT & Finder Bot (50+ Features)
 
-![Python](https://img.shields.io/badge/Python-3.10%20--%203.14+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![CI](https://github.com/anonymous020786-dotcom/UserInfoBotTelegram/actions/workflows/ci.yml/badge.svg)
+![CD](https://github.com/anonymous020786-dotcom/UserInfoBotTelegram/actions/workflows/cd.yml/badge.svg)
+![CodeQL](https://github.com/anonymous020786-dotcom/UserInfoBotTelegram/actions/workflows/codeql.yml/badge.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Aiogram](https://img.shields.io/badge/Aiogram-3.30+-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)
-![Telethon](https://img.shields.io/badge/Telethon-MTProto-0088cc?style=for-the-badge&logo=telegram&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-Async%20aiosqlite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 **Sentinel** is an enterprise-grade, asynchronous Telegram bot built with **Python**, **Aiogram 3**, and **Telethon MTProto**. It provides deep **User Intelligence**, **Public Channel & Group Discovery**, **Forward Header Forensics**, **Data Center (DC) Mapping**, and **50+ Real, Tested Features** with a **Cyberpunk / Dark-Tech UI/UX**.
@@ -270,6 +272,107 @@ In any chat or channel, simply type:
 @YourBot crypto
 ```
 Select any live preview card to share comprehensive statistics directly into the conversation!
+
+---
+
+## 🚀 Advanced CI/CD Pipeline & DevOps Architecture
+
+Sentinel incorporates an enterprise-grade automated CI/CD pipeline built on **GitHub Actions**, **Docker Buildx**, **CodeQL**, and **Dependabot**:
+
+```
+      [ Git Push / PR to main ]
+                 │
+  ┌──────────────┴──────────────┐
+  ▼                             ▼
+[ CI Workflow ]           [ CodeQL Security ]
+• Flake8 Linting          • Deep AST Static Analysis
+• Bandit AST Scan         • Dataflow Vulnerability Scan
+• Pip-Audit (CVEs)
+• Pytest Cross-Matrix:
+  - Python 3.11, 3.12, 3.13
+  - Ubuntu & Windows Runners
+• Code Coverage Report
+• Healthcheck Verification
+• Docker Build Validation
+                 │ (Merged to main)
+                 ▼
+[ CD Workflow (GHCR & Release) ]
+• QEMU Multi-Arch Emulation (`linux/amd64`, `linux/arm64`)
+• Docker Buildx Layer Caching
+• Push OCI Image to GitHub Packages (`ghcr.io`)
+• Automated Semver Tagging (`latest`, `v2.5.0`, `sha`)
+• Automated GitHub Release & Changelog Generation
+• Webhook / SSH Rollout with Zero-Downtime Healthcheck
+```
+
+### Key Workflows:
+1. **Continuous Integration (`.github/workflows/ci.yml`)**:
+   - Automated quality gates running Flake8, Bandit AST security scans, and Pip-Audit for dependencies.
+   - Cross-platform test matrix running on **Ubuntu** and **Windows** across **Python 3.11, 3.12, and 3.13**.
+   - Headless unit & integration tests with code coverage XML generation and automated container healthcheck probe.
+2. **Continuous Deployment (`.github/workflows/cd.yml`)**:
+   - Multi-arch Docker image compilation (`amd64` + `arm64`) using QEMU and Docker Buildx.
+   - Automatic publication to GitHub Container Registry (`ghcr.io/anonymous020786-dotcom/userinfobottelegram`).
+   - Automated semantic release publishing with release notes when pushing git tags (`v*`).
+3. **Advanced Security (`.github/workflows/codeql.yml`)**:
+   - Weekly and PR-level CodeQL vulnerability scanning.
+4. **Automated Maintenance (`.github/dependabot.yml`)**:
+   - Automated weekly security updates for Python packages and GitHub Actions.
+
+---
+
+## 🐳 Docker Containerization & Deployment
+
+Sentinel is packaged with a hardened multi-stage Docker build running under an unprivileged non-root user (`sentinel:10001`) with integrated container healthchecks.
+
+### Quick Start with Docker Compose:
+```bash
+# 1. Clone repository
+git clone https://github.com/anonymous020786-dotcom/UserInfoBotTelegram.git
+cd UserInfoBotTelegram
+
+# 2. Configure environment credentials
+cp .env.example .env
+# Edit .env with your BOT_TOKEN and Telegram API credentials
+
+# 3. Start production container in background
+docker compose up -d
+
+# 4. View real-time logs
+docker compose logs -f sentinel-bot
+```
+
+### Manual Docker Build:
+```bash
+# Build production image
+docker build -t sentinel-telegram-bot:latest .
+
+# Run container with persistent data volume
+docker run -d \
+  --name sentinel-bot \
+  --restart unless-stopped \
+  --env-file .env \
+  -v $(pwd)/data:/app/data \
+  sentinel-telegram-bot:latest
+```
+
+---
+
+## 🛠️ Developer Automation (Makefile)
+
+Common developer and maintenance operations are unified in the `Makefile`:
+
+```bash
+make install-dev    # Install development, testing, and security dependencies
+make test           # Execute automated pytest test suite
+make test-cov       # Run test suite with code coverage report
+make lint           # Run Flake8 static analysis
+make security       # Run Bandit AST scanner and pip-audit for CVEs
+make healthcheck    # Execute deployment healthcheck probe
+make docker-build   # Build Docker image locally
+make docker-up      # Launch stack via Docker Compose
+make docker-down    # Gracefully stop stack
+```
 
 ---
 

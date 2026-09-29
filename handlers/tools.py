@@ -1,6 +1,7 @@
 import asyncio
+from html import escape as escape_html
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 
 from ui.keyboards import tools_menu_keyboard
@@ -280,6 +281,7 @@ async def handle_sticker_command(event: Message | CallbackQuery, bot: Bot):
             "──────────────────────────────",
             f"• <b>Short Name:</b> <code>{set_info.name}</code>",
             f"• <b>Sticker Format:</b> <b>{st_type}</b>",
+            f"• <b>Classification:</b> <code>{format_type}</code>",
             f"• <b>Total Stickers:</b> <code>{stickers_count}</code>",
             f"• <b>Sample Emojis:</b> {sample_emojis or 'None'}",
             "──────────────────────────────",

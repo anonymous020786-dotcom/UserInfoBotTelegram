@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  sentinel-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sentinel-telegram-bot:latest
+    container_name: sentinel-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Mount data folder to persist SQLite database, session files, and exports
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "scripts/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.50'
+          memory: 1024M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "15m"
+        max-file: "5"
+    stop_grace_period: 15s
+    stop_signal: SIGTERM
