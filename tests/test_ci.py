@@ -165,6 +165,14 @@ async def test_phone_to_telegram_resolution():
     assert res_us["dial_code"] == "+1"
     assert "https://wa.me/" in res_us["wa_link"]
 
+    # Indian phone number with telecom circle and UPI forensics
+    res_in = await resolve_phone_to_telegram("+917492068998")
+    assert res_in["country"] == "India"
+    assert res_in["india_telecom"] is not None
+    assert "Bihar & Jharkhand" in res_in["india_telecom"]["circle"]
+    assert res_in["upi_data"] is not None
+    assert res_in["upi_data"]["paytm"] == "7492068998@paytm"
+
 
 @pytest.mark.asyncio
 async def test_user_to_phone_exposure_audit():
@@ -174,4 +182,25 @@ async def test_user_to_phone_exposure_audit():
     assert audit["found"] is True
     assert "threat_score" in audit
     assert "recommendation" in audit
+
+
+@pytest.mark.asyncio
+async def test_keyboard_url_protocols_compliance():
+    """Validate that all inline keyboard buttons adhere to Telegram Bot API protocol rules."""
+    from core.phone_resolver import resolve_phone_to_telegram
+    from aiogram.types import InlineKeyboardButton
+
+    res = await resolve_phone_to_telegram("+917492068998")
+    buttons = [
+        InlineKeyboardButton(text="tg", url=res["tg_protocol"]),
+        InlineKeyboardButton(text="web", url=res["tg_web"]),
+        InlineKeyboardButton(text="wa", url=res["wa_link"]),
+        InlineKeyboardButton(text="upi", callback_data=f"upi_reveal_{res['digits']}")
+    ]
+
+    for btn in buttons:
+        if btn.url:
+            assert btn.url.startswith(("https://", "http://", "tg://")), f"Invalid URL scheme in button: {btn.url}"
+            assert not btn.url.startswith("upi://"), "Telegram Bot API rejects upi:// protocol in buttons!"
+
 

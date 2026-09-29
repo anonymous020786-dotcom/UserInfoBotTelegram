@@ -181,9 +181,9 @@ async def handle_domain_ip_command(event: Message | CallbackQuery):
 
 
 # -------------------------------------------------------------
-# 5. PHONE NUMBER OSINT (/phone <number>)
+# 5. PHONE NUMBER OSINT (/carrier <number>)
 # -------------------------------------------------------------
-@router.message(Command("phone"))
+@router.message(Command("carrier", "hlr"))
 @router.callback_query(F.data == "tool_phone_osint")
 async def handle_phone_command(event: Message | CallbackQuery):
     """Analyzes international phone number, detects country and Fragment +888 NFT."""

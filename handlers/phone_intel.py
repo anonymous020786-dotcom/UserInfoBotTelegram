@@ -37,95 +37,102 @@ async def handle_phone_to_user_command(message: Message):
     phone_raw = parts[1].strip()
     status_msg = await message.reply("📡 <i>Auditing phone carrier, Fragment blockchain, and Telegram protocol...</i>", parse_mode="HTML")
 
-    res = await resolve_phone_to_telegram(phone_raw)
+    try:
+        res = await resolve_phone_to_telegram(phone_raw)
 
-    lines = [
-        f"📱 <b>[PHONE TO USER FORENSICS: <code>{res['formatted']}</code>]</b>",
-        "──────────────────────────────",
-        f"• <b>Geographic Origin:</b> {res['flag']} <b>{res['country']}</b>",
-        f"• <b>Dial Prefix:</b> <code>{res['dial_code']}</code> (Timezone: <code>{res['timezone']}</code>)",
-        f"• <b>Format Validity:</b> {'✅ Valid Length (E.164)' if res['is_valid_length'] else '⚠️ Irregular Length'}",
-        "──────────────────────────────"
-    ]
-
-    kb_rows = []
-
-    # If Indian Telecom Circle Info
-    if res.get("india_telecom"):
-        it = res["india_telecom"]
-        lines.extend([
-            "📡 <b>[TELECOM OPERATOR & CIRCLE ALLOCATION]</b>",
-            f"• <b>Telecom Circle:</b> 📍 <b>{it['circle']}</b>",
-            f"• <b>Service Provider:</b> 🏢 <b>{it['operator']}</b>",
-            f"• <b>National Format:</b> <code>{it['national_format']}</code>",
-            f"• <b>E.164 Spaced:</b> <code>{it['e164_spaced']}</code>",
+        lines = [
+            f"📱 <b>[PHONE TO USER FORENSICS: <code>{res['formatted']}</code>]</b>",
+            "──────────────────────────────",
+            f"• <b>Geographic Origin:</b> {res['flag']} <b>{res['country']}</b>",
+            f"• <b>Dial Prefix:</b> <code>{res['dial_code']}</code> (Timezone: <code>{res['timezone']}</code>)",
+            f"• <b>Format Validity:</b> {'✅ Valid Length (E.164)' if res['is_valid_length'] else '⚠️ Irregular Length'}",
             "──────────────────────────────"
-        ])
+        ]
 
-    # If Indian Financial UPI Vectors
-    if res.get("upi_data"):
-        upi = res["upi_data"]
+        kb_rows = []
+
+        # If Indian Telecom Circle Info
+        if res.get("india_telecom"):
+            it = res["india_telecom"]
+            lines.extend([
+                "📡 <b>[TELECOM OPERATOR & CIRCLE ALLOCATION]</b>",
+                f"• <b>Telecom Circle:</b> 📍 <b>{it['circle']}</b>",
+                f"• <b>Service Provider:</b> 🏢 <b>{it['operator']}</b>",
+                f"• <b>National Format:</b> <code>{it['national_format']}</code>",
+                f"• <b>E.164 Spaced:</b> <code>{it['e164_spaced']}</code>",
+                "──────────────────────────────"
+            ])
+
+        # If Indian Financial UPI Vectors
+        if res.get("upi_data"):
+            upi = res["upi_data"]
+            lines.extend([
+                "💳 <b>[FINANCIAL UPI OSINT VECTORS]</b>",
+                f"• <b>PhonePe VPA:</b> <code>{upi['phonepe']}</code>",
+                f"• <b>Paytm VPA:</b> <code>{upi['paytm']}</code>",
+                f"• <b>Google Pay VPA:</b> <code>{upi['google_pay']}</code>",
+                f"• <b>BHIM VPA:</b> <code>{upi['bhim']}</code>",
+                "<i>💡 Tip: Copy any VPA above or tap below to reveal registered KYC name!</i>",
+                "──────────────────────────────"
+            ])
+
+        # If Fragment +888 Anonymous Virtual Number
+        if res["is_fragment_nft"] and res["fragment_data"]:
+            frag = res["fragment_data"]
+            lines.extend([
+                "💎 <b>[FRAGMENT TON VIRTUAL NUMBER NFT]</b>",
+                f"• <b>Marketplace Status:</b> <b>{frag['status']}</b>",
+            ])
+            if frag.get("price_ton"):
+                lines.append(f"• <b>Valuation:</b> 💎 <b>{frag['price_ton']:,} TON</b> (~${frag.get('price_usd_est', 0):,} USD)")
+            if frag.get("highest_bid"):
+                lines.append(f"• <b>Highest Bid:</b> <code>{frag['highest_bid']}</code>")
+            if frag.get("auction_ends"):
+                lines.append(f"• <b>Auction Timer:</b> ⏳ <code>{frag['auction_ends']}</code>")
+            if frag.get("owner_address"):
+                lines.append(f"• <b>Owner TON Wallet:</b> <code>{frag['owner_address']}</code>")
+            lines.append("──────────────────────────────")
+            kb_rows.append([InlineKeyboardButton(text="💎 View on Fragment NFT", url=frag["fragment_url"])])
+
+        # Direct Resolution Protocols
         lines.extend([
-            "💳 <b>[FINANCIAL UPI OSINT VECTORS]</b>",
-            f"• <b>PhonePe VPA:</b> <code>{upi['phonepe']}</code>",
-            f"• <b>Paytm VPA:</b> <code>{upi['paytm']}</code>",
-            f"• <b>Google Pay VPA:</b> <code>{upi['google_pay']}</code>",
-            f"• <b>BHIM VPA:</b> <code>{upi['bhim']}</code>",
-            "<i>💡 Tip: Tap button below to view the registered bank account holder name!</i>",
-            "──────────────────────────────"
+            "🔗 <b>DIRECT PROTOCOL RESOLUTION VECTORS:</b>",
+            "<i>Tap buttons below to resolve profile in native Telegram:</i>\n"
         ])
 
-    # If Fragment +888 Anonymous Virtual Number
-    if res["is_fragment_nft"] and res["fragment_data"]:
-        frag = res["fragment_data"]
+        kb_rows.append([
+            InlineKeyboardButton(text="✈️ Open via tg:// Protocol", url=res["tg_protocol"]),
+            InlineKeyboardButton(text="🌐 Open via t.me/+", url=res["tg_web"])
+        ])
+        
+        action_row = [InlineKeyboardButton(text="💬 WhatsApp Direct", url=res["wa_link"])]
+        if res.get("upi_data"):
+            action_row.append(InlineKeyboardButton(text="💳 Reveal Bank KYC Name", callback_data=f"upi_reveal_{res['digits']}"))
+        kb_rows.append(action_row)
+
+        kb_rows.append([InlineKeyboardButton(text="📥 Export .VCF Contact (Reveal Name/Photo)", callback_data=f"get_vcard_{res['digits']}")])
+
+        # Step-by-Step Operator Guide
         lines.extend([
-            "💎 <b>[FRAGMENT TON VIRTUAL NUMBER NFT]</b>",
-            f"• <b>Marketplace Status:</b> <b>{frag['status']}</b>",
+            "💡 <b>HOW TO REVEAL THIS USER'S NAME & PHOTO:</b>",
+            "1. <b>Tap '✈️ Open via tg://'</b>: Launches private chat in Telegram desktop/mobile.",
+            "2. <b>Tap '📥 Export .VCF Contact'</b>: Download & save to phone address book; Telegram immediately syncs and displays registered name & profile photo!",
+            "3. <b>Tap '💳 Reveal Bank KYC Name'</b>: Query NPCI UPI network to fetch verified legal name."
         ])
-        if frag.get("price_ton"):
-            lines.append(f"• <b>Valuation:</b> 💎 <b>{frag['price_ton']:,} TON</b> (~${frag.get('price_usd_est', 0):,} USD)")
-        if frag.get("highest_bid"):
-            lines.append(f"• <b>Highest Bid:</b> <code>{frag['highest_bid']}</code>")
-        if frag.get("auction_ends"):
-            lines.append(f"• <b>Auction Timer:</b> ⏳ <code>{frag['auction_ends']}</code>")
-        if frag.get("owner_address"):
-            lines.append(f"• <b>Owner TON Wallet:</b> <code>{frag['owner_address']}</code>")
-        lines.append("──────────────────────────────")
-        kb_rows.append([InlineKeyboardButton(text="💎 View on Fragment NFT", url=frag["fragment_url"])])
 
-    # Direct Resolution Protocols
-    lines.extend([
-        "🔗 <b>DIRECT PROTOCOL RESOLUTION VECTORS:</b>",
-        "<i>Tap buttons below to resolve profile in native Telegram:</i>\n"
-    ])
+        kb_rows.append([InlineKeyboardButton(text="🏠 Home Menu", callback_data="nav_home")])
 
-    kb_rows.append([
-        InlineKeyboardButton(text="✈️ Open via tg:// Protocol", url=res["tg_protocol"]),
-        InlineKeyboardButton(text="🌐 Open via t.me/+", url=res["tg_web"])
-    ])
-    
-    action_row = [InlineKeyboardButton(text="💬 WhatsApp Direct", url=res["wa_link"])]
-    if res.get("upi_data"):
-        action_row.append(InlineKeyboardButton(text="💳 Verify Bank Name (UPI)", url=res["upi_data"]["upi_link"]))
-    kb_rows.append(action_row)
-
-    kb_rows.append([InlineKeyboardButton(text="📥 Export .VCF Contact (Reveal Name/Photo)", callback_data=f"get_vcard_{res['digits']}")])
-
-    # Step-by-Step Operator Guide
-    lines.extend([
-        "💡 <b>HOW TO REVEAL THIS USER'S NAME & PHOTO:</b>",
-        "1. <b>Tap '✈️ Open via tg://'</b>: Launches private chat in Telegram desktop/mobile.",
-        "2. <b>Tap '📥 Export .VCF Contact'</b>: Download & save to phone address book; Telegram immediately syncs and displays registered name & profile photo!",
-        "3. <b>Tap '💳 Verify Bank Name'</b>: Opens banking app to reveal the KYC registered legal name."
-    ])
-
-    kb_rows.append([InlineKeyboardButton(text="🏠 Home Menu", callback_data="nav_home")])
-
-    await status_msg.edit_text(
-        "\n".join(lines),
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows),
-        parse_mode="HTML"
-    )
+        await status_msg.edit_text(
+            "\n".join(lines),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows),
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await status_msg.edit_text(
+            f"❌ <b>Error resolving phone number:</b> {escape_html(str(e))}\n\n"
+            "Please check the phone format (e.g., <code>/phone +919876543210</code>) and try again.",
+            parse_mode="HTML"
+        )
 
 
 # ==============================================================================
@@ -148,67 +155,73 @@ async def handle_user_to_phone_audit_command(message: Message, bot: Bot):
     target = parts[1].strip()
     status_msg = await message.reply(f"🕵️ <i>Auditing profile text, bio, and metadata for @{target.lstrip('@')}...</i>", parse_mode="HTML")
 
-    res = await audit_user_phone_exposure(target, bot=bot)
+    try:
+        res = await audit_user_phone_exposure(target, bot=bot)
 
-    if not res["found"]:
-        await status_msg.edit_text(f"❌ <b>Error:</b> {res.get('error', 'Could not resolve target.')}", parse_mode="HTML")
-        return
+        if not res["found"]:
+            await status_msg.edit_text(f"❌ <b>Error:</b> {res.get('error', 'Could not resolve target.')}", parse_mode="HTML")
+            return
 
-    ent = res["entity"]
-    title = escape_html(ent.get("title", res["identifier"]))
-    uname = ent.get("username", res["identifier"])
+        ent = res["entity"]
+        title = escape_html(ent.get("title", res["identifier"]))
+        uname = ent.get("username", res["identifier"])
 
-    lines = [
-        f"🕵️ <b>[PHONE EXPOSURE AUDIT: @{uname}]</b>",
-        "──────────────────────────────",
-        f"• <b>Target Entity:</b> <b>{title}</b> (@{uname})",
-        f"• <b>Account Classification:</b> <code>{ent.get('type', 'user').title()}</code>",
-        f"• <b>Privacy Status:</b> <b>{res['rating']}</b>",
-        f"• <b>Deanonymization Risk Score:</b> <b>{res['threat_score']} / 100</b>",
-        "──────────────────────────────"
-    ]
+        lines = [
+            f"🕵️ <b>[PHONE EXPOSURE AUDIT: @{uname}]</b>",
+            "──────────────────────────────",
+            f"• <b>Target Entity:</b> <b>{title}</b> (@{uname})",
+            f"• <b>Account Classification:</b> <code>{ent.get('type', 'user').title()}</code>",
+            f"• <b>Privacy Status:</b> <b>{res['rating']}</b>",
+            f"• <b>Deanonymization Risk Score:</b> <b>{res['threat_score']} / 100</b>",
+            "──────────────────────────────"
+        ]
 
-    kb_rows = []
+        kb_rows = []
 
-    if res["extracted_phones"]:
-        lines.append("🚨 <b>CLEARTEXT NUMBERS DETECTED IN BIO:</b>")
-        for ph in res["extracted_phones"]:
-            lines.append(f"• <code>{ph}</code>")
-            kb_rows.append([InlineKeyboardButton(text=f"🔍 Audit Number {ph}", callback_data=f"audit_num_{ph.lstrip('+')}")])
-        lines.append("")
-    else:
+        if res["extracted_phones"]:
+            lines.append("🚨 <b>CLEARTEXT NUMBERS DETECTED IN BIO:</b>")
+            for ph in res["extracted_phones"]:
+                lines.append(f"• <code>{ph}</code>")
+                kb_rows.append([InlineKeyboardButton(text=f"🔍 Audit Number {ph}", callback_data=f"audit_num_{ph.lstrip('+')}")])
+            lines.append("")
+        else:
+            lines.extend([
+                "🔒 <b>NO CLEARTEXT PHONE DETECTED:</b>",
+                "• Profile description contains no exposed phone numbers or dial codes.",
+                "• Phone number is securely protected by Telegram's server-side encryption.",
+                ""
+            ])
+
+        if res["has_wa_link"]:
+            lines.append("⚠️ <b>External Contact Vector:</b> Profile contains external WhatsApp link.")
+
+        frag = res.get("fragment_info", {})
+        if frag and frag.get("status") in ["Sold", "On Auction"]:
+            lines.append(f"💎 <b>Fragment TON Collectible:</b> {frag.get('status')} (Valuation: {frag.get('price_ton', 'N/A')} TON)")
+
         lines.extend([
-            "🔒 <b>NO CLEARTEXT PHONE DETECTED:</b>",
-            "• Profile description contains no exposed phone numbers or dial codes.",
-            "• Phone number is securely protected by Telegram's server-side encryption.",
-            ""
+            "──────────────────────────────",
+            "📋 <b>FORENSIC ASSESSMENT:</b>",
+            f"<i>{res['recommendation']}</i>\n",
+            "💡 <b>Mutual Contact Discovery:</b>",
+            "To test if you share mutual contacts, save the target to your phone's address book and allow Telegram client sync."
         ])
 
-    if res["has_wa_link"]:
-        lines.append("⚠️ <b>External Contact Vector:</b> Profile contains external WhatsApp link.")
+        kb_rows.append([
+            InlineKeyboardButton(text=f"🔍 Full OSINT Info", callback_data=f"query_chat_{uname}"),
+            InlineKeyboardButton(text="🏠 Home Menu", callback_data="nav_home")
+        ])
 
-    frag = res.get("fragment_info", {})
-    if frag and frag.get("status") in ["Sold", "On Auction"]:
-        lines.append(f"💎 <b>Fragment TON Collectible:</b> {frag.get('status')} (Valuation: {frag.get('price_ton', 'N/A')} TON)")
-
-    lines.extend([
-        "──────────────────────────────",
-        "📋 <b>FORENSIC ASSESSMENT:</b>",
-        f"<i>{res['recommendation']}</i>\n",
-        "💡 <b>Mutual Contact Discovery:</b>",
-        "To test if you share mutual contacts, save the target to your phone's address book and allow Telegram client sync."
-    ])
-
-    kb_rows.append([
-        InlineKeyboardButton(text=f"🔍 Full OSINT Info", callback_data=f"query_chat_{uname}"),
-        InlineKeyboardButton(text="🏠 Home Menu", callback_data="nav_home")
-    ])
-
-    await status_msg.edit_text(
-        "\n".join(lines),
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows),
-        parse_mode="HTML"
-    )
+        await status_msg.edit_text(
+            "\n".join(lines),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_rows),
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await status_msg.edit_text(
+            f"❌ <b>Error auditing target:</b> {escape_html(str(e))}",
+            parse_mode="HTML"
+        )
 
 
 # ==============================================================================
@@ -250,6 +263,38 @@ async def handle_audit_num_callback(callback: CallbackQuery):
     fake_msg = callback.message
     fake_msg.text = f"/phone +{digits}"
     await handle_phone_to_user_command(fake_msg)
+
+
+@router.callback_query(F.data.startswith("upi_reveal_"))
+async def handle_upi_reveal_callback(callback: CallbackQuery):
+    """Guides operator on querying NPCI UPI network to extract bank account holder name."""
+    digits = callback.data.split("upi_reveal_")[-1].strip()
+    d10 = digits[-10:] if len(digits) >= 10 else digits
+    await callback.answer()
+
+    text = (
+        f"💳 <b>[UPI FINANCIAL OSINT // KYC NAME REVEAL]</b>\n"
+        f"<b>Target Number:</b> <code>+91 {d10}</code>\n"
+        "──────────────────────────────\n"
+        "In India, the NPCI UPI banking switch connects directly to the target's bank account. "
+        "Any UPI app will fetch and display their verified legal KYC name before you send any money.\n\n"
+        "<b>Registered VPA Handles for this number:</b>\n"
+        f"• <b>PhonePe:</b> <code>{d10}@ybl</code>\n"
+        f"• <b>Paytm:</b> <code>{d10}@paytm</code>\n"
+        f"• <b>Google Pay:</b> <code>{d10}@oksbi</code>\n"
+        f"• <b>BHIM / UPI:</b> <code>{d10}@upi</code>\n\n"
+        "<b>Steps to Reveal Legal Bank Name:</b>\n"
+        "1. Tap any VPA handle above to copy it.\n"
+        "2. Open <b>Paytm</b>, <b>PhonePe</b>, <b>Google Pay</b>, or <b>BHIM</b>.\n"
+        "3. Choose <b>'Pay to UPI ID / Mobile Number'</b> and paste the handle.\n"
+        "4. The official banking interface immediately displays the <b>account holder's verified legal name</b> on your screen without completing any payment!"
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📥 Download .VCF Contact", callback_data=f"get_vcard_{digits}")],
+        [InlineKeyboardButton(text="🔙 Back to Target Forensics", callback_data=f"audit_num_{digits}")],
+        [InlineKeyboardButton(text="🏠 Home Menu", callback_data="nav_home")]
+    ])
+    await callback.message.reply(text, reply_markup=kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data == "tool_phone2user")
