@@ -64,50 +64,44 @@ async def handle_bot_finder_menu(event: Message | CallbackQuery):
         await event.answer(text, reply_markup=kb, parse_mode="HTML")
 
 
+from core.pagination_manager import (
+    parse_search_operators,
+    create_search_session,
+    build_paginated_view
+)
+
+
 async def execute_bot_search(message: Message, query: str):
-    """Executes live bot search and displays matching candidates."""
-    status_msg = await message.reply(f"🤖 <i>Searching global Telegram network for bots matching '{query}'...</i>", parse_mode="HTML")
-    results = await search_real_bots(query, limit=6)
+    """Executes live bot search and displays matching candidates with interactive pagination."""
+    clean_query, filters = parse_search_operators(query)
+    status_msg = await message.reply(f"🤖 <i>Searching global Telegram network for bots matching '{clean_query}'...</i>", parse_mode="HTML")
 
-    if not results:
-        await status_msg.edit_text(
-            f"❌ <b>No bots found for:</b> <code>{query}</code>\n"
-            "<i>Try searching by category such as 'ai', 'download', 'music', 'crypto', or 'security'.</i>",
-            parse_mode="HTML"
+    try:
+        results = await search_real_bots(clean_query, limit=50)
+
+        if filters.get("verified_only"):
+            results = [r for r in results if r.get("is_verified")]
+
+        if not results:
+            await status_msg.edit_text(
+                f"❌ <b>No bots found for:</b> <code>{escape_html(clean_query)}</code>\n"
+                "<i>Try searching by category such as 'ai', 'download', 'music', 'crypto', or 'security'.</i>",
+                parse_mode="HTML"
+            )
+            return
+
+        sess_id = create_search_session(
+            results=results,
+            query=clean_query,
+            entity_type="bot",
+            per_page=5
         )
-        return
 
-    lines = [
-        f"🤖 <b>[BOT SEARCH RESULTS: '{escape_html(query)}']</b>",
-        "──────────────────────────────",
-        f"Found <b>{len(results)}</b> verified and active bots:\n"
-    ]
-
-    kb_buttons = []
-    for idx, b in enumerate(results, 1):
-        uname = b.get("username", "Unknown")
-        title = escape_html(b.get("title", uname))
-        extra = b.get("extra", "")
-        verified = " 🔷" if b.get("is_verified") else ""
-
-        lines.append(f"<b>{idx}. {title}</b>{verified}")
-        lines.append(f"   • Handle: @{uname}")
-        if extra:
-            lines.append(f"   • Extra: <i>{extra}</i>")
-        lines.append("")
-
-        kb_buttons.append([
-            InlineKeyboardButton(text=f"🤖 Open @{uname}", url=f"https://t.me/{uname}"),
-            InlineKeyboardButton(text=f"🔍 Inspect", callback_data=f"query_chat_{uname}")
-        ])
-
-    kb_buttons.append([InlineKeyboardButton(text="🔙 Back to Bot Finder", callback_data="nav_bot_finder")])
-
-    await status_msg.edit_text(
-        "\n".join(lines),
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_buttons),
-        parse_mode="HTML"
-    )
+        text, kb = build_paginated_view(sess_id, page=1)
+        await status_msg.delete()
+        await message.reply(text, reply_markup=kb, parse_mode="HTML")
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Error during bot search: {escape_html(str(e))}", parse_mode="HTML")
 
 
 @router.message(Command("botsquat", "botclones"))

@@ -148,6 +148,38 @@ async def search_real_bots(query: str, limit: int = 8) -> List[Dict[str, Any]]:
                     seen_unames.add(uname_l)
                     results.append(p)
 
+    # Priority 2: Curated Catalog Bots
+    for b in CURATED_BOTS:
+        u_l = b["username"].lower()
+        if u_l not in seen_unames:
+            if base in u_l or base in b["name"].lower() or base in b.get("category", "").lower() or clean_q in u_l or clean_q in b["name"].lower():
+                seen_unames.add(u_l)
+                results.append({
+                    "username": b["username"],
+                    "title": b["name"],
+                    "extra": f"🤖 {b.get('category', 'Utility')}",
+                    "description": b.get("desc", ""),
+                    "is_verified": False,
+                    "type": "bot",
+                    "source": "Curated Top Bots"
+                })
+
+    for item in all_comms:
+        if item.get("type") == "bot":
+            u_l = item.get("username", "").lower()
+            if u_l and u_l not in seen_unames:
+                if base in u_l or base in item.get("title", "").lower() or clean_q in u_l or clean_q in item.get("title", "").lower():
+                    seen_unames.add(u_l)
+                    results.append({
+                        "username": item["username"],
+                        "title": item.get("title", item["username"]),
+                        "extra": f"🤖 {item.get('category', 'Bot')}",
+                        "description": item.get("description", ""),
+                        "is_verified": False,
+                        "type": "bot",
+                        "source": "Sentinel Catalog"
+                    })
+
     # Sort results: exact keyword matches first, then verified, then title length
     def bot_sort(x):
         u = x.get("username", "").lower()
@@ -156,7 +188,7 @@ async def search_real_bots(query: str, limit: int = 8) -> List[Dict[str, Any]]:
         return (exact, ver)
 
     results.sort(key=bot_sort, reverse=True)
-    return results[:limit]
+    return results[:limit] if limit else results
 
 
 async def detect_bot_clones(brand_name: str) -> List[Dict[str, Any]]:

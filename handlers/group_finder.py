@@ -1,64 +1,80 @@
+"""
+Sentinel Group Finder Handler.
+Discovers active public groups & supergroups across global topics,
+supports member count filters (min:), interactive pagination, and CSV data exports.
+"""
 from aiogram import Router, F, Bot
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
 from aiogram.filters import Command
 
 from core.telegram_discovery import search_real_telegram_entities
-from ui.formatters import format_group_report
-from ui.keyboards import group_actions_keyboard
-from database import is_favorite
+from core.pagination_manager import (
+    parse_search_operators,
+    create_search_session,
+    build_paginated_view
+)
+from ui.formatters import escape_html
 
 router = Router(name="group_finder_router")
 
 
 @router.message(Command("group", "findgroup", "g"))
 async def handle_group_search(message: Message, user_theme: str = "cyberpunk", user_lang: str = "en", bot: Bot = None):
-    """Searches for real public Telegram groups/supergroups matching keywords."""
+    """Searches for real public Telegram groups/supergroups matching keywords with pagination."""
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
         await message.reply(
             "👥 <b>GROUP FINDER USAGE:</b>\n"
-            "Send <code>/group &lt;topic or keyword&gt;</code>\n"
-            "<i>Example:</i> <code>/group developers</code> or <code>/group crypto community</code>",
+            "──────────────────────────────\n"
+            "Send <code>/group &lt;topic or keyword&gt; [filters]</code>\n\n"
+            "<b>Search Examples:</b>\n"
+            "• <code>/group developers</code>\n"
+            "• <code>/group crypto min:5k</code> (Groups with at least 5,000 members)\n"
+            "• <code>/group gaming</code>\n"
+            "• <code>/group start up community</code>",
             parse_mode="HTML"
         )
         return
 
-    query = parts[1].strip()
-    status_msg = await message.reply("📡 <i>Scanning Telegram index for active groups...</i>", parse_mode="HTML")
+    raw_query = parts[1].strip()
+    clean_query, filters = parse_search_operators(raw_query)
 
-    results = await search_real_telegram_entities(query, limit=6, bot=bot)
-    group_results = [r for r in results if r.get("type") in ["group", "supergroup"]]
-    if not group_results and results:
-        group_results = results
+    status_msg = await message.reply(f"📡 <i>Scanning Telegram index for active groups matching '{clean_query}'...</i>", parse_mode="HTML")
 
-    if not group_results:
-        await status_msg.edit_text(
-            f"❌ No public communities found matching '<b>{query}</b>'. Try broader terms.",
-            parse_mode="HTML"
+    try:
+        raw_results = await search_real_telegram_entities(clean_query, limit=50, bot=bot)
+        # Filter groups / supergroups
+        group_results = [r for r in raw_results if r.get("type") in ["group", "supergroup"]]
+        if not group_results and raw_results:
+            group_results = raw_results  # fallback
+
+        # Apply search filters
+        if filters.get("min_members"):
+            min_m = filters["min_members"]
+            group_results = [r for r in group_results if (r.get("members_count") or 0) >= min_m]
+
+        if filters.get("verified_only"):
+            group_results = [r for r in group_results if r.get("is_verified")]
+
+        if not group_results:
+            await status_msg.edit_text(
+                f"❌ No public communities found matching '<b>{escape_html(clean_query)}</b>' with given filters.\n"
+                "<i>Try broader terms or lower member thresholds.</i>",
+                parse_mode="HTML"
+            )
+            return
+
+        # Store in pagination session
+        sess_id = create_search_session(
+            results=group_results,
+            query=clean_query,
+            entity_type="group",
+            per_page=5
         )
-        return
 
-    text_lines = [
-        f"👥 <b>GROUPS DISCOVERED FOR:</b> <code>{query}</code>",
-        "──────────────────────────────"
-    ]
-    keyboard = []
+        text, kb = build_paginated_view(sess_id, page=1)
+        await status_msg.delete()
+        await message.reply(text, reply_markup=kb, parse_mode="HTML")
 
-    for idx, grp in enumerate(group_results, 1):
-        title = grp.get("title", "Community")
-        uname = grp.get("username", "")
-        members = grp.get("members_count")
-        members_str = f"👥 {members:,} members" if members else (grp.get("extra") or "")
-
-        text_lines.append(f"<b>{idx}.</b> <b>{title}</b> (@{uname})\n   └ {members_str}")
-        keyboard.append([
-            InlineKeyboardButton(text=f"🔍 Inspect {title[:20]}", callback_data=f"query_chat_{uname}")
-        ])
-
-    keyboard.append([InlineKeyboardButton(text="🏠 Home Menu", callback_data="nav_home")])
-    await status_msg.delete()
-    await message.reply(
-        "\n".join(text_lines),
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard),
-        parse_mode="HTML"
-    )
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Error during group search: {escape_html(str(e))}", parse_mode="HTML")

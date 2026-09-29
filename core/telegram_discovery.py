@@ -10,6 +10,7 @@ from core.reg_date_estimator import estimate_registration_date
 from core.osint_analyzer import analyze_text_osint, validate_telegram_username
 from core.directory_data import search_directory, CURATED_COMMUNITIES
 from core.telethon_engine import get_telethon_client, deep_mtproto_lookup
+from core.cache_manager import preview_cache
 
 # Avoid blacklisted routing segments
 RESERVED_HANDLES = {
@@ -29,6 +30,10 @@ async def fetch_real_telegram_preview(username_or_link: str) -> Optional[Dict[st
 
     if not clean or clean.lower() in RESERVED_HANDLES or clean.startswith("+"):
         return None
+
+    cached = await preview_cache.get(clean.lower())
+    if cached is not None:
+        return cached
 
     url = f"https://t.me/{clean}"
     headers = {
@@ -92,7 +97,7 @@ async def fetch_real_telegram_preview(username_or_link: str) -> Optional[Dict[st
             if cdn_match:
                 dc_id = int(cdn_match.group(1))
 
-        return {
+        result = {
             "username": clean,
             "title": title,
             "extra": extra_str,
@@ -104,6 +109,8 @@ async def fetch_real_telegram_preview(username_or_link: str) -> Optional[Dict[st
             "dc_id": dc_id,
             "source": "Telegram Web Direct"
         }
+        await preview_cache.set(clean.lower(), result)
+        return result
     except Exception:
         return None
 
@@ -169,12 +176,14 @@ async def search_real_telegram_entities(query: str, limit: int = 8, bot = None) 
         pass
 
     # 4. Fetch actual live Telegram data for candidate handles concurrently
-    candidate_list = [h for h in list(discovered_handles) if h.lower() not in RESERVED_HANDLES][:35]
+    candidate_list = [h for h in list(discovered_handles) if h.lower() not in RESERVED_HANDLES][:45]
     tasks = [fetch_real_telegram_preview(handle) for handle in candidate_list]
     previews = await asyncio.gather(*tasks, return_exceptions=True)
 
     results = []
     seen = set()
+
+    # Priority 1: Verified Live Previews
     for prev in previews:
         if isinstance(prev, dict) and prev.get("title") and prev.get("username"):
             u_l = prev["username"].lower()
@@ -183,17 +192,34 @@ async def search_real_telegram_entities(query: str, limit: int = 8, bot = None) 
             seen.add(u_l)
             results.append(prev)
 
+    # Priority 2: Curated Local Catalog Communities (1,472 items)
+    for it in local_matches:
+        u_l = it.get("username", "").lower()
+        if u_l and u_l not in seen and u_l not in RESERVED_HANDLES:
+            seen.add(u_l)
+            results.append({
+                "username": it["username"],
+                "title": it.get("name", it["username"]),
+                "type": it.get("type", "channel"),
+                "description": it.get("desc", ""),
+                "extra": f"📁 {it.get('category', 'Curated')}",
+                "is_verified": False,
+                "members_count": None,
+                "source": "Sentinel Catalog"
+            })
+
     # Sort results: relevant keyword matches first, then communities (channels/groups), then member count
     def sort_key(x):
         uname = x.get("username", "").lower()
         title = x.get("title", "").lower()
         rel = 2 if base_compact in uname or base in uname or base_compact in title else 1
         mc = x.get("members_count") or 0
-        is_community = 1 if x.get("type") in ["channel", "group"] else 0
-        return (rel, is_community, mc)
+        is_community = 1 if x.get("type") in ["channel", "group", "supergroup"] else 0
+        is_ver = 1 if x.get("is_verified") else 0
+        return (rel, is_ver, is_community, mc)
 
     results.sort(key=sort_key, reverse=True)
-    return results[:limit]
+    return results[:limit] if limit else results
 
 
 async def resolve_full_entity(identifier: str, bot = None) -> Optional[Dict[str, Any]]:

@@ -18,6 +18,7 @@ from handlers import (
     start,
     bot_finder,
     phone_intel,
+    advanced_intel,
     user_info,
     forward_inspector,
     channel_finder,
@@ -75,8 +76,13 @@ async def setup_bot_commands(bot: Bot):
         BotCommand(command="country", description="🌐 Regional Communities Index"),
         BotCommand(command="directory", description="📂 Curated 12-Topic Directory"),
         BotCommand(command="tools", description="🛠️ OSINT & Developer Utilities"),
-        BotCommand(command="favorites", description="⭐ Access Bookmarked Entities"),
-        BotCommand(command="history", description="🕒 View Past Lookup History"),
+        BotCommand(command="botsafety", description="🛡️ Bot Phishing & Vulnerability Scanner"),
+        BotCommand(command="engagement", description="📈 Channel Velocity & Reach Rate (VSR)"),
+        BotCommand(command="linkaudit", description="🔗 Telegram Invite & Link Forensics"),
+        BotCommand(command="cloneradar", description="📡 Channel/Bot Impersonator Radar"),
+        BotCommand(command="groupaudit", description="🛡️ Group Admin & Security Hygiene"),
+        BotCommand(command="chanlang", description="🌐 Audience Script & Regional Demographics"),
+        BotCommand(command="similar", description="💡 Recommended Related Communities"),
         BotCommand(command="settings", description="⚙️ Language & Visual Themes"),
         BotCommand(command="help", description="📖 User Manual & Guide"),
     ]
@@ -141,6 +147,7 @@ async def main():
     dp.include_router(start.router)
     dp.include_router(bot_finder.router)
     dp.include_router(phone_intel.router)
+    dp.include_router(advanced_intel.router)
     dp.include_router(forward_inspector.router)
     dp.include_router(channel_finder.router)
     dp.include_router(group_finder.router)

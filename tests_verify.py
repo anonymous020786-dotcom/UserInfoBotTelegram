@@ -33,6 +33,16 @@ from core.network_tools import (
 )
 from core.channel_intelligence import calculate_channel_health_score, get_country_channels
 from core.directory_data import get_directory_stats, get_curated_communities, search_directory
+from core.cache_manager import FastCache, preview_cache
+from core.pagination_manager import create_search_session, build_paginated_view, generate_search_csv, parse_search_operators
+from core.bot_safety_analyzer import audit_bot_safety
+from core.channel_velocity import analyze_channel_velocity
+from core.link_security import audit_telegram_link
+from core.clone_radar import scan_clone_radar
+from core.group_audit import audit_group_security
+from core.language_detector import detect_scripts_in_text
+from core.similar_engine import find_similar_communities
+
 
 
 async def run_diagnostics():
@@ -182,15 +192,74 @@ async def run_diagnostics():
     print(f"       ✓ Query 'crypto' returned {len(search_res)} curated results.")
 
     # 20. Phone to User Resolution & Profile Phone Exposure Audit
-    print("[20/20] Testing Phone to User Resolution & Profile Exposure Audit...")
+    print("[20/25] Testing Phone to User Resolution & Profile Exposure Audit...")
     p_frag = await resolve_phone_to_telegram("+88801234567")
     assert p_frag["is_fragment_nft"] is True
     assert "tg://resolve?phone=" in p_frag["tg_protocol"]
     assert "BEGIN:VCARD" in p_frag["vcard_content"]
+    p_in = await resolve_phone_to_telegram("+917492068998")
+    assert p_in["country"] == "India"
+    assert p_in["india_telecom"] is not None
     audit_res = await audit_user_phone_exposure("telegram")
     assert audit_res["found"] is True
     print(f"       ✓ Phone +888 Resolution: {p_frag['country']} (NFT Status: {p_frag['fragment_data']['status'] if p_frag['fragment_data'] else 'N/A'})")
+    print(f"       ✓ India Phone +91 Forensics: {p_in['india_telecom']['circle']} (Carrier: {p_in['india_telecom']['operator']})")
     print(f"       ✓ Telegram Exposure Audit: {audit_res['rating']} (Threat Score: {audit_res['threat_score']}/100)")
+
+    # 21. High-Performance LRU & TTL Caching Subsystem
+    print("[21/25] Testing In-Memory LRU & TTL Cache Subsystem...")
+    test_cache = FastCache(max_size=5, default_ttl=30)
+    await test_cache.set("bench_k", "bench_v", ttl=10)
+    assert await test_cache.get("bench_k") == "bench_v"
+    c_stats = test_cache.stats()
+    assert c_stats["hits"] == 1
+    print(f"       ✓ Cache Engine Operational: Hits={c_stats['hits']}, Hit Ratio={c_stats['hit_ratio_percent']}%")
+
+    # 22. Search Pagination, Operator Parser & CSV Export
+    print("[22/25] Testing Search Pagination, Operators & CSV Data Export...")
+    q_clean, q_filts = parse_search_operators("ai min:50k verified:true")
+    assert q_clean == "ai"
+    assert q_filts["min_members"] == 50000
+    assert q_filts["verified_only"] is True
+    fake_items = [{"title": f"Community {i}", "username": f"comm_{i}", "type": "channel", "members_count": i * 1000, "is_verified": False} for i in range(1, 12)]
+    s_id = create_search_session(fake_items, "ai", entity_type="channel", per_page=5)
+    page_txt, page_kb = build_paginated_view(s_id, page=1)
+    assert "Page 1 of 3" in page_txt
+    csv_str = generate_search_csv(s_id)
+    assert "comm_1" in csv_str
+    print(f"       ✓ Operators: clean='{q_clean}', min={q_filts['min_members']}, verified={q_filts['verified_only']}")
+    print(f"       ✓ Paginated Session '{s_id}': 3 pages generated, CSV export verified ({len(csv_str)} bytes)")
+
+    # 23. Bot Safety & Phishing Vulnerability Scanner (/botsafety)
+    print("[23/25] Testing Bot Safety & Phishing Vulnerability Scanner (/botsafety)...")
+    safety = await audit_bot_safety("botfather")
+    assert safety["found"] is True
+    assert safety["safety_score"] >= 75
+    print(f"       ✓ Bot Safety @{safety['handle']}: Score={safety['safety_score']}/100, Verdict={safety['verdict']}")
+
+    # 24. Channel Engagement Velocity & Link Security (/velocity, /linkaudit)
+    print("[24/25] Testing Channel Velocity Forensics & Link Security (/velocity, /linkaudit)...")
+    vel = await analyze_channel_velocity("telegram")
+    assert vel["found"] is True
+    link_info = await audit_telegram_link("https://t.me/+SampleInviteHash123")
+    assert link_info["type"] == "telegram_invite"
+    print(f"       ✓ Channel Velocity @telegram: VSR={vel['vsr_percent']}%, Tier={vel['status_tier']}")
+    print(f"       ✓ Link Security Forensics: Invite Hash={link_info['invite_hash']}, Protocol={link_info['tg_protocol']}")
+
+    # 25. Clone Radar, Group Security & Script Demographics (/cloneradar, /groupaudit, /chanlang)
+    print("[25/25] Testing Clone Radar, Group Security & Script Demographics...")
+    clones = await scan_clone_radar("telegram")
+    assert clones["scanned_permutations"] > 0
+    grp_audit = await audit_group_security("telegram")
+    assert grp_audit["found"] is True
+    scripts = detect_scripts_in_text("Telegram Official News Channel")
+    assert scripts["primary_script"] == "Latin"
+    similar_recs = await find_similar_communities("telegram", limit=3)
+    assert len(similar_recs["recommendations"]) > 0
+    print(f"       ✓ Clone Radar: scanned {clones['scanned_permutations']} permutations")
+    print(f"       ✓ Group Hygiene: Grade {grp_audit['grade']} ({grp_audit['verdict']})")
+    print(f"       ✓ Script Demographics: {scripts['primary_script']} -> {scripts['primary_region']}")
+    print(f"       ✓ Similar Communities: Found {len(similar_recs['recommendations'])} recommendations for @telegram")
 
     # Clean temporary diagnostic artifacts
     for f in [qr_file, card_file, pdf_file]:
@@ -200,7 +269,7 @@ async def run_diagnostics():
             pass
 
     print("=" * 70)
-    print("🎉 ALL 19 CORE, BOT FINDER, DIRECTORY & ADVANCED SUBSYSTEMS PASSED WITH 100% SUCCESS!")
+    print("🎉 ALL 25 CORE, BOT FINDER, DIRECTORY, PAGINATION & ADVANCED SUBSYSTEMS PASSED WITH 100% SUCCESS!")
     print("=" * 70)
 
 
