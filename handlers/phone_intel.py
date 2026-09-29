@@ -50,6 +50,31 @@ async def handle_phone_to_user_command(message: Message):
 
     kb_rows = []
 
+    # If Indian Telecom Circle Info
+    if res.get("india_telecom"):
+        it = res["india_telecom"]
+        lines.extend([
+            "📡 <b>[TELECOM OPERATOR & CIRCLE ALLOCATION]</b>",
+            f"• <b>Telecom Circle:</b> 📍 <b>{it['circle']}</b>",
+            f"• <b>Service Provider:</b> 🏢 <b>{it['operator']}</b>",
+            f"• <b>National Format:</b> <code>{it['national_format']}</code>",
+            f"• <b>E.164 Spaced:</b> <code>{it['e164_spaced']}</code>",
+            "──────────────────────────────"
+        ])
+
+    # If Indian Financial UPI Vectors
+    if res.get("upi_data"):
+        upi = res["upi_data"]
+        lines.extend([
+            "💳 <b>[FINANCIAL UPI OSINT VECTORS]</b>",
+            f"• <b>PhonePe VPA:</b> <code>{upi['phonepe']}</code>",
+            f"• <b>Paytm VPA:</b> <code>{upi['paytm']}</code>",
+            f"• <b>Google Pay VPA:</b> <code>{upi['google_pay']}</code>",
+            f"• <b>BHIM VPA:</b> <code>{upi['bhim']}</code>",
+            "<i>💡 Tip: Tap button below to view the registered bank account holder name!</i>",
+            "──────────────────────────────"
+        ])
+
     # If Fragment +888 Anonymous Virtual Number
     if res["is_fragment_nft"] and res["fragment_data"]:
         frag = res["fragment_data"]
@@ -78,17 +103,20 @@ async def handle_phone_to_user_command(message: Message):
         InlineKeyboardButton(text="✈️ Open via tg:// Protocol", url=res["tg_protocol"]),
         InlineKeyboardButton(text="🌐 Open via t.me/+", url=res["tg_web"])
     ])
-    kb_rows.append([
-        InlineKeyboardButton(text="💬 WhatsApp Direct", url=res["wa_link"]),
-        InlineKeyboardButton(text="📥 Export .VCF Contact", callback_data=f"get_vcard_{res['digits']}")
-    ])
+    
+    action_row = [InlineKeyboardButton(text="💬 WhatsApp Direct", url=res["wa_link"])]
+    if res.get("upi_data"):
+        action_row.append(InlineKeyboardButton(text="💳 Verify Bank Name (UPI)", url=res["upi_data"]["upi_link"]))
+    kb_rows.append(action_row)
 
-    # Privacy notice
+    kb_rows.append([InlineKeyboardButton(text="📥 Export .VCF Contact (Reveal Name/Photo)", callback_data=f"get_vcard_{res['digits']}")])
+
+    # Step-by-Step Operator Guide
     lines.extend([
-        "🛡️ <b>TELEGRAM PRIVACY BOUNDARY:</b>",
-        "• Telegram MTProto protocol uses salted SHA-256 phone hashing.",
-        "• Bot tokens are restricted by Telegram API from reading address books.",
-        "• Mutual contacts or public privacy allows instant 1-tap connection."
+        "💡 <b>HOW TO REVEAL THIS USER'S NAME & PHOTO:</b>",
+        "1. <b>Tap '✈️ Open via tg://'</b>: Launches private chat in Telegram desktop/mobile.",
+        "2. <b>Tap '📥 Export .VCF Contact'</b>: Download & save to phone address book; Telegram immediately syncs and displays registered name & profile photo!",
+        "3. <b>Tap '💳 Verify Bank Name'</b>: Opens banking app to reveal the KYC registered legal name."
     ])
 
     kb_rows.append([InlineKeyboardButton(text="🏠 Home Menu", callback_data="nav_home")])
