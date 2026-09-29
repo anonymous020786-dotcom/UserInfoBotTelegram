@@ -17,6 +17,7 @@ from middlewares.tracking import UserTrackingMiddleware
 from handlers import (
     start,
     bot_finder,
+    phone_intel,
     user_info,
     forward_inspector,
     channel_finder,
@@ -57,6 +58,8 @@ async def setup_bot_commands(bot: Bot):
         BotCommand(command="fragment", description="💎 Fragment NFT & Username Auction"),
         BotCommand(command="domain", description="🌐 Domain & IP Geolocation OSINT"),
         BotCommand(command="phone", description="📱 International Phone & NFT Number"),
+        BotCommand(command="phone2user", description="📱 Phone to Telegram Account Lookup"),
+        BotCommand(command="user2phone", description="🕵️ Profile Phone Exposure & Bio Audit"),
         BotCommand(command="proxy", description="🛡️ MTProto & SOCKS5 Proxy Links"),
         BotCommand(command="ssl", description="🔒 Audit Domain TLS/SSL Certificate"),
         BotCommand(command="whois", description="🌐 Query ICANN RDAP Domain Registry"),
@@ -137,6 +140,7 @@ async def main():
     # 6. Register Routers (order matters for matching precedence)
     dp.include_router(start.router)
     dp.include_router(bot_finder.router)
+    dp.include_router(phone_intel.router)
     dp.include_router(forward_inspector.router)
     dp.include_router(channel_finder.router)
     dp.include_router(group_finder.router)

@@ -111,70 +111,86 @@ async def fetch_real_telegram_preview(username_or_link: str) -> Optional[Dict[st
 async def search_real_telegram_entities(query: str, limit: int = 8, bot = None) -> List[Dict[str, Any]]:
     """
     Searches and discovers REAL public Telegram channels and groups:
-    1. Queries MTProto Telegram client search if available.
-    2. Queries live Web index (DuckDuckGo site:t.me {query}) to discover live handles.
-    3. Matches curated catalog.
-    4. Gathers live metadata directly from Telegram for all discovered entities.
+    1. Searches massive local catalog (1,472 curated channels and groups).
+    2. Probes high-probability channel and group handle permutations directly on Telegram.
+    3. Queries live Telegram public indexes (Lyzem Telegram Search Engine).
+    4. Gathers 100% live metadata and subscriber counts directly from Telegram's servers.
     """
-    clean_q = query.strip().lstrip("@")
+    clean_q = query.strip().lstrip("@").lower()
+    base = clean_q.replace(" ", "_")
+    base_compact = clean_q.replace(" ", "")
     discovered_handles = set()
 
-    # 1. Check MTProto SearchRequest if Telethon client is connected
-    telethon_client = await get_telethon_client()
-    if telethon_client:
-        try:
-            from telethon.tl.functions.contacts import SearchRequest
-            res = await telethon_client(SearchRequest(q=clean_q, limit=limit))
-            for chat in getattr(res, "chats", []):
-                if hasattr(chat, "username") and chat.username:
-                    discovered_handles.add(chat.username)
-            for user in getattr(res, "users", []):
-                if hasattr(user, "username") and user.username:
-                    discovered_handles.add(user.username)
-        except Exception:
-            pass
-
-    # 2. Live Web Discovery for `site:t.me <query>`
-    try:
-        search_data = urllib.parse.urlencode({"q": f"site:t.me {clean_q}"})
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        }
-        timeout = aiohttp.ClientTimeout(total=4)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post("https://html.duckduckgo.com/html/", data=search_data, headers=headers) as resp:
-                if resp.status == 200:
-                    html = await resp.text()
-                    matches = re.findall(r't\.me/([a-zA-Z0-9_]{4,32})', html)
-                    for m in matches:
-                        if m.lower() not in RESERVED_HANDLES:
-                            discovered_handles.add(m)
-    except Exception:
-        pass
-
-    # 3. Add matches from curated directory
+    # 1. Matches from massive curated directory
     local_matches = search_directory(clean_q)
     for it in local_matches:
         discovered_handles.add(it["username"])
 
-    # If the user literally typed a single handle, ensure it's in the candidates
-    if len(clean_q.split()) == 1 and len(clean_q) >= 3:
-        discovered_handles.add(clean_q)
+    # 2. Smart Channel & Group Handle Permutations (Direct Telegram Probing)
+    perm_candidates = [
+        base_compact,
+        base,
+        f"{base}_channel",
+        f"{base}_official",
+        f"{base}_group",
+        f"{base}_chat",
+        f"{base}_hub",
+        f"{base}_news",
+        f"{base}_community",
+        f"{base}_media",
+        f"{base}_links",
+        f"{base}_hd",
+        f"{base}_movies",
+        f"{base}_updates",
+        f"{base}_india",
+        f"{base}_global",
+        f"official_{base}",
+        f"{base}official"
+    ]
+    for p in perm_candidates:
+        if len(p) >= 3 and p not in RESERVED_HANDLES:
+            discovered_handles.add(p)
 
-    # 4. Fetch actual live Telegram data for each discovered candidate
-    results = []
-    tasks = [fetch_real_telegram_preview(handle) for handle in list(discovered_handles)[:limit * 2]]
+    # 3. Live Public Telegram Index Search (Lyzem Engine)
+    try:
+        lyzem_url = f"https://lyzem.com/search?q={urllib.parse.quote(clean_q)}"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"}
+        timeout = aiohttp.ClientTimeout(total=4)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(lyzem_url, headers=headers) as resp:
+                if resp.status == 200:
+                    html = await resp.text()
+                    matches = re.findall(r't\.me/([a-zA-Z0-9_]{3,32})', html)
+                    for m in matches:
+                        m_l = m.lower()
+                        if m_l not in RESERVED_HANDLES and "lyzem" not in m_l:
+                            discovered_handles.add(m)
+    except Exception:
+        pass
+
+    # 4. Fetch actual live Telegram data for candidate handles concurrently
+    candidate_list = [h for h in list(discovered_handles) if h.lower() not in RESERVED_HANDLES][:35]
+    tasks = [fetch_real_telegram_preview(handle) for handle in candidate_list]
     previews = await asyncio.gather(*tasks, return_exceptions=True)
 
+    results = []
+    seen = set()
     for prev in previews:
-        if isinstance(prev, dict) and prev.get("title"):
+        if isinstance(prev, dict) and prev.get("title") and prev.get("username"):
+            u_l = prev["username"].lower()
+            if u_l in seen or u_l in RESERVED_HANDLES:
+                continue
+            seen.add(u_l)
             results.append(prev)
 
-    # Sort results: channels and groups first, then by member count if available
+    # Sort results: relevant keyword matches first, then communities (channels/groups), then member count
     def sort_key(x):
+        uname = x.get("username", "").lower()
+        title = x.get("title", "").lower()
+        rel = 2 if base_compact in uname or base in uname or base_compact in title else 1
         mc = x.get("members_count") or 0
         is_community = 1 if x.get("type") in ["channel", "group"] else 0
-        return (is_community, mc)
+        return (rel, is_community, mc)
 
     results.sort(key=sort_key, reverse=True)
     return results[:limit]

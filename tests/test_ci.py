@@ -148,3 +148,30 @@ async def test_database_isolated():
     finally:
         if tmp_path.exists():
             tmp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_phone_to_telegram_resolution():
+    """Test phone resolution, Fragment +888 detection, and vCard export."""
+    from core.phone_resolver import resolve_phone_to_telegram
+    res_888 = await resolve_phone_to_telegram("+88801234567")
+    assert res_888["is_fragment_nft"] is True
+    assert "tg://resolve?phone=" in res_888["tg_protocol"]
+    assert "BEGIN:VCARD" in res_888["vcard_content"]
+    assert res_888["dial_code"] == "+888"
+
+    res_us = await resolve_phone_to_telegram("+12025550123")
+    assert res_us["is_fragment_nft"] is False
+    assert res_us["dial_code"] == "+1"
+    assert "https://wa.me/" in res_us["wa_link"]
+
+
+@pytest.mark.asyncio
+async def test_user_to_phone_exposure_audit():
+    """Test username profile phone exposure and deanonymization assessment."""
+    from core.phone_resolver import audit_user_phone_exposure
+    audit = await audit_user_phone_exposure("telegram")
+    assert audit["found"] is True
+    assert "threat_score" in audit
+    assert "recommendation" in audit
+

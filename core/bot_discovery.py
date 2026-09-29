@@ -47,58 +47,115 @@ BOT_CATEGORIES = {
 
 async def search_real_bots(query: str, limit: int = 8) -> List[Dict[str, Any]]:
     """
-    Discovers real Telegram bots matching a search query:
-    1. Checks MTProto search index for bots.
-    2. Searches live Web index for site:t.me/*bot.
-    3. Matches curated bot database.
-    4. Fetches live real metadata for discovered bots.
+    Discovers real, functional Telegram bots matching any search query:
+    1. Searches massive local catalog (276 curated bots).
+    2. Probes high-probability bot handle permutations directly on Telegram.
+    3. Queries live Telegram public indexes (Lyzem Telegram Engine).
+    4. Fetches 100% real live metadata and subscriber counts directly from Telegram.
     """
     clean_q = query.strip().lower().lstrip("@")
+    base = clean_q.rstrip("bot").rstrip("_")
+    if not base:
+        base = clean_q
+
     discovered_handles = set()
 
-    # 1. Match curated database
+    # 1. Search massive curated catalog
+    from core.directory_data import get_curated_communities
+    all_comms = get_curated_communities()
+    for item in all_comms:
+        if item.get("type") == "bot":
+            uname = item.get("username", "").lower()
+            title = item.get("title", "").lower()
+            desc = item.get("description", "").lower()
+            if base in uname or base in title or base in desc or clean_q in uname or clean_q in title:
+                discovered_handles.add(item["username"])
+
+    # Match static CURATED_BOTS list
     for b in CURATED_BOTS:
-        if clean_q in b["username"].lower() or clean_q in b["name"].lower() or clean_q in b["category"].lower() or clean_q in b["desc"].lower():
+        if base in b["username"].lower() or base in b["name"].lower() or base in b["category"].lower() or base in b["desc"].lower():
             discovered_handles.add(b["username"])
 
-    # 2. MTProto contacts search
-    telethon_client = await get_telethon_client()
-    if telethon_client:
-        try:
-            from telethon.tl.functions.contacts import SearchRequest
-            res = await telethon_client(SearchRequest(q=f"{clean_q} bot", limit=limit * 2))
-            for u in getattr(res, "users", []):
-                if getattr(u, "bot", False) and getattr(u, "username", None):
-                    discovered_handles.add(u.username)
-        except Exception:
-            pass
+    # 2. Smart Bot Permutations (Direct Telegram Probing)
+    perm_candidates = [
+        f"{base}bot",
+        f"{base}_bot",
+        f"{base}s_bot",
+        f"{base}_official_bot",
+        f"official_{base}_bot",
+        f"{base}_the_bot",
+        f"{base}_z_bot",
+        f"{base}_org_bot",
+        f"{base}_downloader_bot",
+        f"{base}_search_bot",
+        f"{base}_video_bot",
+        f"{base}_chat_bot",
+        f"{base}_ai_bot",
+        f"{base}ai_bot",
+        f"{base}_channel_bot",
+        f"{base}_link_bot",
+        f"{base}_app_bot"
+    ]
+    if clean_q.endswith("bot") or len(clean_q) >= 4:
+        perm_candidates.insert(0, clean_q)
 
-    # 3. Web search query: site:t.me/*bot {clean_q}
+    for p in perm_candidates:
+        if len(p) >= 4:
+            discovered_handles.add(p)
+
+    # 3. Live Public Telegram Index Search (Lyzem Engine)
     try:
-        search_data = urllib.parse.urlencode({"q": f"site:t.me/*bot {clean_q}"})
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        }
+        lyzem_url = f"https://lyzem.com/search?q={urllib.parse.quote(clean_q)}+bot"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"}
         timeout = aiohttp.ClientTimeout(total=4)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post("https://html.duckduckgo.com/html/", data=search_data, headers=headers) as resp:
+            async with session.get(lyzem_url, headers=headers) as resp:
                 if resp.status == 200:
                     html = await resp.text()
-                    matches = re.findall(r't\.me/([a-zA-Z0-9_]{3,32}bot)', html, re.IGNORECASE)
+                    matches = re.findall(r't\.me/([a-zA-Z0-9_]{3,32})', html, re.IGNORECASE)
                     for m in matches:
-                        discovered_handles.add(m)
+                        m_lower = m.lower()
+                        if m_lower.endswith("bot") and "lyzem" not in m_lower:
+                            discovered_handles.add(m)
     except Exception:
         pass
 
-    # Fetch live previews
-    results = []
-    tasks = [fetch_real_telegram_preview(h) for h in list(discovered_handles)[:limit * 2]]
+    # 4. Concurrently fetch real, live Telegram previews
+    candidate_list = list(discovered_handles)[:30]
+    tasks = [fetch_real_telegram_preview(h) for h in candidate_list]
     previews = await asyncio.gather(*tasks, return_exceptions=True)
 
+    results = []
+    seen_unames = set()
     for p in previews:
-        if isinstance(p, dict) and p.get("title"):
-            results.append(p)
+        if isinstance(p, dict) and p.get("title") and p.get("username"):
+            uname_l = p["username"].lower()
+            if uname_l in seen_unames:
+                continue
+            # Ensure it is a bot (ends in 'bot' or official verified bot)
+            if uname_l.endswith("bot") or uname_l in ["wallet", "botfather"] or p.get("type") in ["bot", "user"]:
+                # Relevant check
+                if base in uname_l or base in p["title"].lower() or clean_q in uname_l or clean_q in p["title"].lower():
+                    seen_unames.add(uname_l)
+                    results.append(p)
 
+    # If no strict keyword matches, fallback to all valid discovered bots
+    if not results:
+        for p in previews:
+            if isinstance(p, dict) and p.get("title") and p.get("username"):
+                uname_l = p["username"].lower()
+                if uname_l not in seen_unames and (uname_l.endswith("bot") or uname_l in ["wallet", "botfather"]):
+                    seen_unames.add(uname_l)
+                    results.append(p)
+
+    # Sort results: exact keyword matches first, then verified, then title length
+    def bot_sort(x):
+        u = x.get("username", "").lower()
+        exact = 2 if u == clean_q or u == f"{base}bot" or u == f"{base}_bot" else 1
+        ver = 1 if x.get("is_verified") else 0
+        return (exact, ver)
+
+    results.sort(key=bot_sort, reverse=True)
     return results[:limit]
 
 

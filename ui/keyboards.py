@@ -221,22 +221,23 @@ def tools_menu_keyboard(lang: str = "en") -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🌐 Domain & IP OSINT", callback_data="tool_domain_ip")
         ],
         [
-            InlineKeyboardButton(text="📱 Phone Number OSINT", callback_data="tool_phone_osint"),
-            InlineKeyboardButton(text="🔢 64-bit ID Forensics", callback_data="tool_idmath")
+            InlineKeyboardButton(text="📱 Phone to User (/phone)", callback_data="tool_phone2user"),
+            InlineKeyboardButton(text="🕵️ Phone Exposure (/user2phone)", callback_data="tool_user2phone")
         ],
         [
-            InlineKeyboardButton(text="🤖 Bot Token Checker", callback_data="tool_bot_check"),
-            InlineKeyboardButton(text="🌐 Data Centers (DC) Map", callback_data="tool_dc_map")
+            InlineKeyboardButton(text="🔢 64-bit ID Forensics", callback_data="tool_idmath"),
+            InlineKeyboardButton(text="🤖 Bot Token Checker", callback_data="tool_bot_check")
         ],
         [
-            InlineKeyboardButton(text="🏁 Custom QR Generator", callback_data="tool_custom_qr"),
-            InlineKeyboardButton(text="🛡️ Phishing & Scam Auditor", callback_data="tool_scam_audit")
+            InlineKeyboardButton(text="🌐 Data Centers (DC) Map", callback_data="tool_dc_map"),
+            InlineKeyboardButton(text="🏁 Custom QR Generator", callback_data="tool_custom_qr")
         ],
         [
-            InlineKeyboardButton(text="🎨 Sticker Pack Forensics", callback_data="tool_sticker"),
-            InlineKeyboardButton(text="🔗 Telegram Deep Links", callback_data="tool_deeplinks")
+            InlineKeyboardButton(text="🛡️ Phishing & Scam Auditor", callback_data="tool_scam_audit"),
+            InlineKeyboardButton(text="🎨 Sticker Pack Forensics", callback_data="tool_sticker")
         ],
         [
+            InlineKeyboardButton(text="🔗 Telegram Deep Links", callback_data="tool_deeplinks"),
             InlineKeyboardButton(text=get_text("btn_home", lang), callback_data="nav_home")
         ]
     ]

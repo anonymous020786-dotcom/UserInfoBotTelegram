@@ -19,11 +19,12 @@ from core.osint_analyzer import analyze_text_osint, validate_telegram_username
 from core.qr_generator import generate_styled_qr
 from core.card_generator import create_identity_card
 from core.pdf_generator import generate_osint_pdf
-from core.telegram_discovery import fetch_real_telegram_preview
+from core.telegram_discovery import fetch_real_telegram_preview, search_real_telegram_entities
 from core.post_analyzer import fetch_real_telegram_post
 from core.fragment_scraper import scrape_fragment_username
 from core.domain_ip_analyzer import resolve_domain_or_ip
 from core.phone_analyzer import analyze_phone_number
+from core.phone_resolver import resolve_phone_to_telegram, audit_user_phone_exposure
 from core.id_forensics import analyze_telegram_id, analyze_bot_token_forensics
 from core.bot_discovery import search_real_bots, detect_bot_clones, get_random_bot, CURATED_BOTS
 from core.network_tools import (
@@ -125,44 +126,49 @@ async def run_diagnostics():
     print(f"       ✓ Embedded Bot ID: {token_audit['bot_id']}")
 
     # 13. Advanced Bot Finder Engine (/findbot)
-    print("[13/18] Testing Advanced Bot Finder Engine (/findbot)...")
+    print("[13/20] Testing Advanced Bot Finder Engine (/findbot)...")
     bots = await search_real_bots("ai", limit=4)
     assert len(bots) >= 1
     print(f"       ✓ Found {len(bots)} live bots for query 'ai'. Example: @{bots[0]['username']}")
+    ullu_bots = await search_real_bots("ullu", limit=4)
+    assert len(ullu_bots) >= 1
+    print(f"       ✓ Found {len(ullu_bots)} live bots for query 'ullu'. Example: @{ullu_bots[0]['username']}")
 
     # 14. Bot Squatting & Clone Hunter (/botsquat)
-    print("[14/18] Testing Bot Squatting & Clone Hunter (/botsquat)...")
+    print("[14/20] Testing Bot Squatting & Clone Hunter (/botsquat)...")
     clones = await detect_bot_clones("telegram")
     print(f"       ✓ Scanned permutations: detected {len(clones)} live clone candidates")
 
     # 15. Bot Roulette (/randombot)
-    print("[15/19] Testing Bot Roulette (/randombot)...")
+    print("[15/20] Testing Bot Roulette (/randombot)...")
     rb = get_random_bot()
     assert rb["username"].lower().endswith("bot") or rb["username"].lower() in ["wallet", "botfather"]
     print(f"       ✓ Picked Random Bot: {rb['name']} (@{rb['username']}) - {rb['category']}")
 
     # 16. TLS/SSL Certificate Inspection (/ssl)
-    print("[16/19] Testing TLS/SSL Certificate Audit (/ssl)...")
+    print("[16/20] Testing TLS/SSL Certificate Audit (/ssl)...")
     ssl_info = await check_ssl_certificate("telegram.org")
     assert ssl_info["is_valid"] is True
     print(f"       ✓ SSL Issuer: {ssl_info['issuer']} (Expires: {ssl_info['expires_at']})")
 
     # 17. Authoritative RDAP / WHOIS Query (/whois)
-    print("[17/19] Testing Authoritative RDAP / WHOIS Query (/whois)...")
+    print("[17/20] Testing Authoritative RDAP / WHOIS Query (/whois)...")
     whois_info = await query_rdap_whois("telegram.org")
     print(f"       ✓ RDAP Status: {whois_info.get('success')}, Registrar: {whois_info.get('registrar')}")
 
-    # 18. Channel Health Quality Score (/health) & Country Communities
-    print("[18/19] Testing Channel Health Quality Score & Regional Directory...")
+    # 18. Channel Health Quality Score (/health) & Country Communities & Real Entity Discovery
+    print("[18/20] Testing Channel Health Quality Score, Regional Directory & Entity Discovery...")
     health = calculate_channel_health_score(preview)
     assert health["score"] >= 70
     us_channels = get_country_channels("us")
     assert len(us_channels["channels"]) >= 3
+    ullu_ents = await search_real_telegram_entities("ullu", limit=4)
+    assert len(ullu_ents) >= 1
     print(f"       ✓ Telegram News Health Score: {health['score']}/100 ({health['grade']})")
-    print(f"       ✓ Regional US Directory: {us_channels['flag']} {len(us_channels['channels'])} top channels")
+    print(f"       ✓ Real Live Entity Discovery for 'ullu': found {len(ullu_ents)} entities (@{ullu_ents[0]['username']})")
 
     # 19. Curated Directory Catalog (1,400+ Channels, Groups & Bots)
-    print("[19/19] Testing Curated Directory Catalog (1,400+ communities & bots)...")
+    print("[19/20] Testing Curated Directory Catalog (1,400+ communities & bots)...")
     stats = get_directory_stats()
     assert stats["total_communities"] >= 1400
     assert stats["total_categories"] == 32
@@ -174,6 +180,17 @@ async def run_diagnostics():
     print(f"       ✓ Catalog Verified: {stats['total_communities']} communities across {stats['total_categories']} categories!")
     print(f"         (Channels: {stats['channels_count']} | Groups: {stats['groups_count']} | Bots: {stats['bots_count']})")
     print(f"       ✓ Query 'crypto' returned {len(search_res)} curated results.")
+
+    # 20. Phone to User Resolution & Profile Phone Exposure Audit
+    print("[20/20] Testing Phone to User Resolution & Profile Exposure Audit...")
+    p_frag = await resolve_phone_to_telegram("+88801234567")
+    assert p_frag["is_fragment_nft"] is True
+    assert "tg://resolve?phone=" in p_frag["tg_protocol"]
+    assert "BEGIN:VCARD" in p_frag["vcard_content"]
+    audit_res = await audit_user_phone_exposure("telegram")
+    assert audit_res["found"] is True
+    print(f"       ✓ Phone +888 Resolution: {p_frag['country']} (NFT Status: {p_frag['fragment_data']['status'] if p_frag['fragment_data'] else 'N/A'})")
+    print(f"       ✓ Telegram Exposure Audit: {audit_res['rating']} (Threat Score: {audit_res['threat_score']}/100)")
 
     # Clean temporary diagnostic artifacts
     for f in [qr_file, card_file, pdf_file]:
